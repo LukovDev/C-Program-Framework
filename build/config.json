@@ -1,0 +1,12 @@
+{
+    "program-name": "C Program Framework",
+    "program-icon": "data/build-icon.ico",
+    "compiler":     "gcc",
+    "std":          "c99",
+    "strip":        true,
+    "includes":     ["src/include/"],
+    "optimization": "-O3",
+    "console-disabled": false,
+    "warnings": ["-Wall"],
+    "cflags": []
+}
