@@ -35,6 +35,9 @@ def find_dynamic_libs(libs_dirs: str, libnames: list) -> list:
 
 # Проверяем файлы и прочее:
 def check_files(metadata: dict, metadata_new: dict) -> list:
+    m_os, m_os_new = metadata["os"] if "os" in metadata else None, metadata_new["os"] if "os" in metadata_new else None
+    del metadata["os"]; del metadata_new["os"]  # Удаляем из метаданных.
+
     # Находим удаленные файлы, измененные и новые файлы:
     meta_changed, meta_added, meta_removed = [], [], []
     for path, mtime in metadata_new.items():
@@ -50,6 +53,12 @@ def check_files(metadata: dict, metadata_new: dict) -> list:
     # Создаём папку вывода:
     if os.path.isdir("build/out/"): shutil.rmtree("build/out/")
     os.mkdir("build/out/")
+
+    # Удаляем все объектные файлы, если прошлая сборка была сделана на другой системе:
+    if m_os != m_os_new:
+        # print(f"[!] Build on a new system. Previous OS: {m_os}, Current OS: {m_os_new}")
+        for file in os.listdir("build/tmp/"):
+            if file.endswith(".o"): os.remove(os.path.join("build/tmp/", file))
 
     # Удаление объектных файлов по списку удалённых исходников:
     for path in meta_removed:
@@ -70,7 +79,6 @@ def check_files(metadata: dict, metadata_new: dict) -> list:
     for obj_path, src_path in obj_files.items():
         if src_path not in total_objs and not os.path.isfile(obj_path):
             total_objs.append(src_path)
-
     return total_objs
 
 
@@ -78,7 +86,7 @@ def check_files(metadata: dict, metadata_new: dict) -> list:
 def main() -> None:
     # Читаем мета-данные сборки:
     if not os.path.isfile("metadata.json"):
-        with open("metadata.json", "w+", encoding="utf-8") as f: json.dump({}, f, indent=4)
+        with open("metadata.json", "w+", encoding="utf-8") as f: json.dump({"os": sys.platform}, f, indent=4)
     with open("metadata.json", "r+", encoding="utf-8") as f: metadata = json.load(f)
 
     # Читаем конфигурационный файл сборки:
@@ -109,7 +117,7 @@ def main() -> None:
     all_libs = find_dynamic_libs(libraries, libnames)
 
     # Получаем новый metadata:
-    metadata_new = {file[1:-1]: os.path.getmtime(file[1:-1]) for file in cfiles}
+    metadata_new = {"os": sys.platform} | {file[1:-1]: os.path.getmtime(file[1:-1]) for file in cfiles}
 
     # Сохраняем новый metadata:
     with open("build/tools/metadata.json", "w+", encoding="utf-8") as f: json.dump(metadata_new, f, indent=4)
