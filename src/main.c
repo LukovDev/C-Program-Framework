@@ -5,6 +5,7 @@
 
 // Подключаем:
 #include <stdio.h>
+#include "main.h"
 
 
 // Точка входа в программу:

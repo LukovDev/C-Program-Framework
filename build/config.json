@@ -1,6 +1,6 @@
 {
     "program-name": "C Program Framework",
-    "program-icon": "data/build-icon.ico",
+    "program-icon": "data/icons/icon.ico",
     "compiler":     "gcc",
     "std":          "c99",
     "strip":        true,
