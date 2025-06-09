@@ -5,8 +5,11 @@
     "std":          "c99",
     "strip":        true,
     "includes":     ["src/include/"],
-    "optimization": "-O3",
+    "libraries":    [],
+    "libnames":     [],
+    "optimization": "-O2",
     "console-disabled": false,
     "warnings": ["-Wall"],
-    "cflags": []
+    "compile-flags": [],
+    "linker-flags": []
 }

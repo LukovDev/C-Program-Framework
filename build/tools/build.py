@@ -12,12 +12,29 @@ import shutil
 
 
 # Функция для поиска всех файлов определённого формата:
-def find_files(format: str) -> list:
-    return glob.glob(f"**/*.{format}", recursive=True)
+def find_files(path: str, format: str) -> list:
+    return [p.replace("\\", "/") for p in glob.glob(os.path.join(path, f"**/*.{format}"), recursive=True)]
+
+
+# Ищем необходимые динамические библиотеки:
+def find_dynamic_libs(libs_dirs: str, libnames: list) -> list:
+    if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"): exts = ["dll"]
+    elif sys.platform.startswith("linux"): exts = ["so"]
+    elif sys.platform.startswith("darwin"): exts = ["dylib", "framework"]
+    else: exts = ["dll", "so", "dylib"]
+    libnames_clean, result = [name.lower().lstrip("lib") for name in libnames], []
+    for libdir in libs_dirs:
+        for ext in exts:
+            for full_path in find_files(libdir, ext):
+                name = os.path.basename(full_path).lower()
+                if name.endswith(f".{ext}"): name = name[:-(len(ext)+1)]
+                if name.startswith("lib"): name = name[3:]
+                if name in libnames_clean: result.append(full_path)
+    return result
 
 
 # Проверяем файлы и прочее:
-def check_files(cfiles: list, metadata: dict, metadata_new: dict) -> list:
+def check_files(metadata: dict, metadata_new: dict) -> list:
     # Находим удаленные файлы, измененные и новые файлы:
     meta_changed, meta_added, meta_removed = [], [], []
     for path, mtime in metadata_new.items():
@@ -74,17 +91,22 @@ def main() -> None:
     std_type     = config["std"]
     strip_enable = config["strip"]
     includes     = config["includes"]
+    libraries    = config["libraries"]
+    libnames     = config["libnames"]
     optimizer    = config["optimization"]
     noconsole    = config["console-disabled"]
     warnings     = config["warnings"]
-    cflags       = config["cflags"]
+    comp_flags   = config["compile-flags"]
+    link_flags   = config["linker-flags"]
 
     # Поиск всех си файлов:
-    os.chdir("../../src/")
+    os.chdir("../../")
     cfiles = []
-    for file in find_files("c"):
-        cfiles.append(f"\"{os.path.join('src/', file)}\"")
-    os.chdir("../")
+    for file in find_files("src/", "c"):
+        cfiles.append(f"\"{file}\"")
+
+    # Поиск всех динамических библиотек:
+    all_libs = find_dynamic_libs(libraries, libnames)
 
     # Получаем новый metadata:
     metadata_new = {file[1:-1]: os.path.getmtime(file[1:-1]) for file in cfiles}
@@ -93,21 +115,27 @@ def main() -> None:
     with open("build/tools/metadata.json", "w+", encoding="utf-8") as f: json.dump(metadata_new, f, indent=4)
 
     # Проверяем файлы и прочее:
-    total_objs = check_files(cfiles, metadata, metadata_new)
+    total_objs = check_files(metadata, metadata_new)
 
-    # Генерация флагов компиляции:
+    # Генерация флагов сборки:
+    # Флаги компиляции:
     includes = " ".join([f"-I\"{inc}\"" for inc in includes])
     compile_flags = f"{compiler} -std={std_type} {optimizer} {includes} " \
-                    f" {' '.join(warnings)} {' '.join(cflags)}"  # Флаги компиляции.
+                    f" {' '.join(warnings)} {' '.join(comp_flags)}"  # Флаги компиляции.
 
+    # Флаги линковки:
+    libraries_flags = " ".join([f"-L\"{path}\"" for path in libraries]) if libraries else ""
+    libnames_flags  = " ".join([f"-l\"{name}\"" for name in libnames]) if libnames else ""
     strip_flag = ("-Wl,-x" if sys.platform == "darwin" else "-s") if strip_enable else ""
     noconsole_flag = "-mwindows" if noconsole and sys.platform == "win32" else ""
-    linker_flags  = f"{compiler} {strip_flag} {noconsole_flag}"  # Флаги линковки.
+    linker_flags  = f"{compiler} {strip_flag} {noconsole_flag} {' '.join(link_flags)}"  # Флаги линковки.
 
     # Собираем программу:
     print(f"{' COMPILATION PROJECT ':-^80}")
-    print(f"Command: \"{' '.join(compile_flags.split())}\"")
-    print(f"Compile: [{', '.join([os.path.basename(file) for file in total_objs])}]") if total_objs else None
+    print(f"Compile flags: \"{' '.join(compile_flags.split())}\"")
+    print(f"Linker flags: \"{' '.join((linker_flags+' '+libraries_flags+' '+libnames_flags).split())}\"")
+    print(f"Dynamic libs: [{', '.join([os.path.basename(f) for f in all_libs])}]") if all_libs else None
+    print(f"Compile: [{', '.join([os.path.basename(f) for f in total_objs])}]") if total_objs else None
     print(f"{' '*20}{'~<[OUTPUT]>~':-^40}{' '*20}")
 
     # Удаляем файлы иконок из временной папки:
@@ -125,7 +153,7 @@ def main() -> None:
             os.remove("build/tmp/icon.rc")
         os.remove("build/tmp/icon.o")
 
-    # Комpиляция новых и изменённых исходников:
+    # Компиляция новых и изменённых исходников:
     for path in total_objs:
         print(f"> {path}")
         obj_path = os.path.join("build/tmp/", os.path.splitext(os.path.basename(path))[0]+".o")
@@ -133,9 +161,14 @@ def main() -> None:
 
     # Линкуем все объектные файлы в один:
     obj_files = " ".join([f"\"{f}\"" for f in glob.glob("build/tmp/**/*.o", recursive=True)])
-    os.system(f"{linker_flags} {obj_files} -o \"build/out/{program_name}\"")
+    os.system(f"{linker_flags} {obj_files} {libraries_flags} {libnames_flags} -o \"build/out/{program_name}\"")
     print(f"{'-'*80}")
 
+    # Копируем необходимые библиотеки в папку вывода:
+    print("Copying dynamic libraries... ", end="")
+    for path in all_libs:
+        if os.path.isfile(path): shutil.copy2(path, "build/out/")
+    print("Done!")
 
 # Если этот скрипт запускают:
 if __name__ == "__main__":
