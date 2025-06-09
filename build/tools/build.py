@@ -30,6 +30,10 @@ def check_files(cfiles: list, metadata: dict, metadata_new: dict) -> list:
     # Создаём временную папку для сборки, если её нет:
     if not os.path.isdir("build/tmp/"): os.mkdir("build/tmp/")
 
+    # Создаём папку вывода:
+    if os.path.isdir("build/out/"): shutil.rmtree("build/out/")
+    os.mkdir("build/out/")
+
     # Удаление объектных файлов по списку удалённых исходников:
     for path in meta_removed:
         obj_path = os.path.splitext(path)[0] + ".o"
@@ -106,8 +110,11 @@ def main() -> None:
     print(f"Compile: [{', '.join([os.path.basename(file) for file in total_objs])}]") if total_objs else None
     print(f"{' '*20}{'~<[OUTPUT]>~':-^40}{' '*20}")
 
-    # Создаём .o файл иконки если это windows:
-    [os.remove(os.path.join("build/tmp", f)) for f in os.listdir("build/tmp/") if f.endswith(".ico")]
+    # Удаляем файлы иконок из временной папки:
+    if os.path.isdir("build/tmp/"):
+        [os.remove(os.path.join("build/tmp", f)) for f in os.listdir("build/tmp/") if f.endswith(".ico")]
+
+    # Создаём .o файл иконки если это Windows система:
     if sys.platform == "win32" and program_icon is not None and os.path.isfile(program_icon):
         with open(f"build/tmp/icon.rc", "w+", encoding="utf-8") as f:
             f.write(f"ResurceName ICON \"{os.path.basename(program_icon)}\"")
@@ -126,21 +133,8 @@ def main() -> None:
 
     # Линкуем все объектные файлы в один:
     obj_files = " ".join([f"\"{f}\"" for f in glob.glob("build/tmp/**/*.o", recursive=True)])
-    os.system(f"{linker_flags} {obj_files} -o \"build/tmp/{program_name}\"")
+    os.system(f"{linker_flags} {obj_files} -o \"build/out/{program_name}\"")
     print(f"{'-'*80}")
-
-    # Копируем файлы и очищаем мусор:
-    print("Copy files and cleaning...\n\n")
-
-    # Создаём папку вывода:
-    if os.path.isdir("build/out/"): shutil.rmtree("build/out/")
-    os.mkdir("build/out/")
-
-    # Копируем нашу программу:
-    pname = f"{program_name}.exe" if sys.platform == "win32" else f"{program_name}"
-    if os.path.isfile(f"build/tmp/{pname}"):
-        shutil.copy2(f"build/tmp/{pname}", f"build/out/{pname}")
-        os.remove(f"build/tmp/{pname}")
 
 
 # Если этот скрипт запускают:
