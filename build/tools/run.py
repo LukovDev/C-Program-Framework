@@ -7,6 +7,7 @@
 import os
 import sys
 import json
+import time
 
 
 # Основная функция:
@@ -21,7 +22,9 @@ def main() -> None:
     os.chdir("../../")
     print(f"{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
     pname = f"{program_name}.exe" if sys.platform == "win32" else f"{program_name}"
+    start_time = time.time()
     os.system(f"\"build/out/{pname}\" {' '.join(sys.argv[1:])}")
+    print(f"\nExecution time: {round(time.time()-start_time, 4)}s")
 
 
 # Если этот скрипт запускают:
