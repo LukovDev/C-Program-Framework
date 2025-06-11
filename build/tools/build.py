@@ -173,10 +173,11 @@ def main() -> None:
     print(f"{'-'*80}")
 
     # Копируем необходимые библиотеки в папку вывода:
-    print("Copying dynamic libraries... ", end="")
-    for path in all_libs:
-        if os.path.isfile(path): shutil.copy2(path, "build/out/")
-    print("Done!")
+    if all_libs:
+        print("Copying dynamic libraries... ", end="")
+        for path in all_libs:
+            if os.path.isfile(path): shutil.copy2(path, "build/out/")
+        print("Done!")
 
 # Если этот скрипт запускают:
 if __name__ == "__main__":
