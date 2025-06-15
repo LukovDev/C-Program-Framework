@@ -20,11 +20,14 @@ def main() -> None:
 
     # Запускаем:
     os.chdir("../../")
-    print(f"{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
-    pname = f"{program_name}.exe" if sys.platform == "win32" else f"{program_name}"
-    start_time = time.time()
-    os.system(f"\"build/out/{pname}\" {' '.join(sys.argv[1:])}")
-    print(f"\nExecution time: {round(time.time()-start_time, 4)}s")
+    file_path = os.path.join("build/bin/", f"{program_name}.exe" if sys.platform == "win32" else f"{program_name}")
+    if os.path.isfile(file_path):
+        print(f"\n{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
+        start_time = time.time()
+        os.system(f"\"{file_path}\" {' '.join(sys.argv[1:])}")
+        print(f"\nExecution time: {round(time.time()-start_time, 4)}s")
+    else:
+        print(f"Run: File \"{file_path}\" not found!")
 
 
 # Если этот скрипт запускают:
