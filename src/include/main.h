@@ -2,4 +2,9 @@
 // main.h - Заголовочный файл основного файла.
 //
 
-#pragma once
+#ifndef MAIN_H
+#define MAIN_H
+
+// code.
+
+#endif  // MAIN_H
