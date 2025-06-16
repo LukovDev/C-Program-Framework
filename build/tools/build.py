@@ -118,6 +118,9 @@ def main() -> None:
     # Поиск всех си файлов:
     os.chdir("../../")
     cfiles = []
+    if not os.path.isdir(source_dir):
+        print(f"\nBuild: Error: Directory \"{source_dir}\" not found.")
+        sys.exit()
     for file in find_files(source_dir, "c"):
         cfiles.append(f"\"{file}\"")
 
