@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import time
+from build import bin_dirname
 
 
 # Основная функция:
@@ -20,7 +21,8 @@ def main() -> None:
 
     # Запускаем:
     os.chdir("../../")
-    file_path = os.path.join("build/bin/", f"{program_name}.exe" if sys.platform == "win32" else f"{program_name}")
+    bin_dir = f"build/{bin_dirname}/"
+    file_path = os.path.join(bin_dir, f"{program_name}.exe" if sys.platform == "win32" else f"{program_name}")
     if os.path.isfile(file_path):
         print(f"\n{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
         start_time = time.time()
