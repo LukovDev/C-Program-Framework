@@ -29,7 +29,7 @@ def main() -> None:
         os.system(f"\"{file_path}\" {' '.join(sys.argv[1:])}")
         print(f"\nExecution time: {round(time.time()-start_time, 4)}s")
     else:
-        print(f"Run: File \"{file_path}\" not found!")
+        print(f"\nRun: File \"{file_path}\" not found!")
 
 
 # Если этот скрипт запускают:
