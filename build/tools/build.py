@@ -8,6 +8,7 @@ import os
 import sys
 import glob
 import json
+import time
 import shutil
 
 
@@ -150,6 +151,7 @@ def main() -> None:
     linker_flags  = f"{compiler} {strip_flag} {noconsole_flag} {' '.join(link_flags)}"  # Флаги линковки.
 
     # Собираем программу:
+    start_time = time.time()
     print(f"{' COMPILATION PROJECT ':-^80}")
     print(f"Compile flags: \"{' '.join(compile_flags.split())}\"")
     print(f"Linker flags: \"{' '.join((linker_flags+' '+libraries_flags+' '+libnames_flags).split())}\"")
@@ -192,6 +194,7 @@ def main() -> None:
         for path in all_libs:
             if os.path.isfile(path): shutil.copy2(path, f"build/{bin_dirname}/")
         print("Done!")
+    print(f"Build time: {round(time.time()-start_time, 4)}s")
 
 # Если этот скрипт запускают:
 if __name__ == "__main__":
