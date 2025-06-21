@@ -18,8 +18,8 @@ obj_dirname = "obj"
 
 
 # Функция для поиска всех файлов определённого формата:
-def find_files(path: str, format: str) -> list:
-    return [p.replace("\\", "/") for p in glob.glob(os.path.join(path, f"**/*.{format}"), recursive=True)]
+def find_files(path: str, form: str) -> list:
+    return [p.replace("\\", "/") for p in glob.glob(os.path.join(path, f"**/*.{form}"), recursive=True)]
 
 
 # Ищем необходимые динамические библиотеки:
@@ -40,7 +40,7 @@ def find_dynamic_libs(libs_dirs: str, libnames: list) -> list:
 
 
 # Проверяем файлы и прочее:
-def check_files(metadata: dict, metadata_new: dict) -> list:
+def check_files(metadata: dict, metadata_new: dict, build_dir: str) -> list:
     m_os, m_os_new = metadata["os"] if "os" in metadata else None, metadata_new["os"] if "os" in metadata_new else None
     del metadata["os"]; del metadata_new["os"]  # Удаляем из метаданных.
 
@@ -54,17 +54,17 @@ def check_files(metadata: dict, metadata_new: dict) -> list:
     total_objs = meta_added+meta_changed
 
     # Создаём папку объектов если её нет:
-    if not os.path.isdir(f"build/{obj_dirname}/"): os.mkdir(f"build/{obj_dirname}/")
+    if not os.path.isdir(os.path.join(build_dir, obj_dirname)): os.mkdir(os.path.join(build_dir, obj_dirname))
 
     # Создаём папку бинара:
-    if os.path.isdir(f"build/{bin_dirname}/"): shutil.rmtree(f"build/{bin_dirname}/")
-    os.mkdir(f"build/{bin_dirname}/")
+    if os.path.isdir(os.path.join(build_dir, bin_dirname)): shutil.rmtree(os.path.join(build_dir, bin_dirname))
+    os.mkdir(os.path.join(build_dir, bin_dirname))
 
     # Удаляем все объектные файлы, если прошлая сборка была сделана на другой системе:
     if m_os != m_os_new:
         # print(f"[!] Build on a new system. Previous OS: {m_os}, Current OS: {m_os_new}")
-        for file in os.listdir(f"build/{obj_dirname}/"):
-            if file.endswith(".o"): os.remove(os.path.join(f"build/{obj_dirname}/", file))
+        for file in os.listdir(os.path.join(build_dir, obj_dirname)):
+            if file.endswith(".o"): os.remove(os.path.join(build_dir, obj_dirname, file))
 
     # Удаление объектных файлов по списку удалённых исходников:
     for path in meta_removed:
@@ -73,13 +73,13 @@ def check_files(metadata: dict, metadata_new: dict) -> list:
 
     # Список всех целевых .o файлов из актуальных .c файлов:
     obj_files = {
-        os.path.join(f"build/{obj_dirname}", os.path.splitext(os.path.basename(path))[0] + ".o"): path
+        os.path.join(build_dir, obj_dirname, os.path.splitext(os.path.basename(path))[0] + ".o"): path
         for path in metadata_new
     }
 
     # Удаление лишних .o файлов которых не должно быть:
-    for obj in [os.path.join(f"build/{obj_dirname}", f)
-                for f in os.listdir(f"build/{obj_dirname}/")
+    for obj in [os.path.join(build_dir, obj_dirname, f)
+                for f in os.listdir(os.path.join(build_dir, obj_dirname))
                 if f.endswith(".o") and f != "icon.o"]:
         if obj not in obj_files and os.path.isfile(obj): os.remove(obj)
 
@@ -104,6 +104,7 @@ def main() -> None:
     program_name = config["program-name"]
     program_icon = config["program-icon"]
     source_dir   = config["source-dir"]
+    build_dir    = config["build-dir"]
     compiler     = config["compiler"]
     std_type     = config["std"]
     strip_enable = config["strip"]
@@ -132,10 +133,11 @@ def main() -> None:
     metadata_new = {"os": sys.platform} | {file[1:-1]: os.path.getmtime(file[1:-1]) for file in cfiles}
 
     # Сохраняем новый metadata:
-    with open("build/tools/metadata.json", "w+", encoding="utf-8") as f: json.dump(metadata_new, f, indent=4)
+    with open(os.path.join(build_dir, "tools/metadata.json"), "w+", encoding="utf-8") as f:
+        json.dump(metadata_new, f, indent=4)
 
     # Проверяем файлы и прочее:
-    total_objs = check_files(metadata, metadata_new)
+    total_objs = check_files(metadata, metadata_new, build_dir)
 
     # Генерация флагов сборки:
     # Флаги компиляции:
@@ -160,39 +162,41 @@ def main() -> None:
     print(f"{' '*20}{'~<[OUTPUT]>~':-^40}{' '*20}")
 
     # Удаляем файлы иконок из папки объектов:
-    if os.path.isdir(f"build/{obj_dirname}/"):
-        [os.remove(os.path.join(f"build/{obj_dirname}", f))
-         for f in os.listdir(f"build/{obj_dirname}/")
+    if os.path.isdir(os.path.join(build_dir, obj_dirname)):
+        [os.remove(os.path.join(build_dir, obj_dirname, f))
+         for f in os.listdir(os.path.join(build_dir, obj_dirname))
          if f.endswith(".ico")]
 
     # Создаём .o файл иконки если это Windows система:
+    icon_rc_path = os.path.join(build_dir, obj_dirname, "icon.rc")
     if sys.platform == "win32" and program_icon is not None and os.path.isfile(program_icon):
-        with open(f"build/{obj_dirname}/icon.rc", "w+", encoding="utf-8") as f:
+        with open(icon_rc_path, "w+", encoding="utf-8") as f:
             f.write(f"ResurceName ICON \"{os.path.basename(program_icon)}\"")
-        shutil.copy(f"{program_icon}", f"build/{obj_dirname}/")
-        os.system(f"windres build/{obj_dirname}/icon.rc build/{obj_dirname}/icon.o")
-    elif os.path.isfile(f"build/{obj_dirname}/icon.o"):  # Если не Windows или null иконка, то удаляем объект иконки.
-        if os.path.isfile(f"build/{obj_dirname}/icon.rc"):
-            os.remove(f"build/{obj_dirname}/icon.rc")
-        os.remove(f"build/{obj_dirname}/icon.o")
+        shutil.copy(f"{program_icon}", os.path.join(build_dir, obj_dirname))
+        os.system(f"windres {icon_rc_path} {os.path.join(build_dir, obj_dirname, 'icon.o')}")
+    # Если не Windows или null иконка, то удаляем объект иконки:
+    elif os.path.isfile(os.path.join(build_dir, obj_dirname, "icon.o")):
+        if os.path.isfile(icon_rc_path):
+            os.remove(icon_rc_path)
+        os.remove(os.path.join(build_dir, obj_dirname, "icon.o"))
 
     # Компиляция новых и изменённых исходников:
     for path in total_objs:
         print(f"> {path}")
-        obj_path = os.path.join(f"build/{obj_dirname}/", os.path.splitext(os.path.basename(path))[0]+".o")
+        obj_path = os.path.join(build_dir, obj_dirname, os.path.splitext(os.path.basename(path))[0]+".o")
         os.system(f"{compile_flags} -c {path} -o {obj_path}")
 
     # Линкуем все объектные файлы в один:
-    o_command = f"\"build/{bin_dirname}/{program_name}\""
-    obj_files = " ".join([f"\"{f}\"" for f in glob.glob(f"build/{obj_dirname}/**/*.o", recursive=True)])
-    os.system(f"{linker_flags} {obj_files} {libraries_flags} {libnames_flags} -o {o_command}")
+    o_command = f"\"{os.path.join(build_dir, bin_dirname)}/{program_name}\""
+    objfls = " ".join([f"\"{f}\"" for f in glob.glob(f"{os.path.join(build_dir, obj_dirname)}/**/*.o", recursive=True)])
+    os.system(f"{linker_flags} {objfls} {libraries_flags} {libnames_flags} -o {o_command}")
     print(f"{'-'*80}")
 
     # Копируем необходимые библиотеки в папку бинара:
     if all_libs:
         print("Copying dynamic libraries... ", end="")
         for path in all_libs:
-            if os.path.isfile(path): shutil.copy2(path, f"build/{bin_dirname}/")
+            if os.path.isfile(path): shutil.copy2(path, os.path.join(build_dir, bin_dirname))
         print("Done!")
     print(f"Build time: {round(time.time()-start_time, 4)}s")
 

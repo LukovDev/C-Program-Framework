@@ -2,6 +2,7 @@
     "program-name": "C Program Framework",
     "program-icon": "data/icons/icon.ico",
     "source-dir":   "src/",
+    "build-dir":    "build/",
     "compiler":     "gcc",
     "std":          "c99",
     "strip":        true,

@@ -17,12 +17,12 @@ def main() -> None:
     with open("../config.json", "r+", encoding="utf-8") as f: config = json.load(f)
 
     # Преобразование данных конфигурации в переменные:
-    program_name = config["program-name"]
+    prog_name = config["program-name"]
+    build_dir = config["build-dir"]
 
     # Запускаем:
     os.chdir("../../")
-    bin_dir = f"build/{bin_dirname}/"
-    file_path = os.path.join(bin_dir, f"{program_name}.exe" if sys.platform == "win32" else f"{program_name}")
+    file_path = os.path.join(build_dir, bin_dirname, f"{prog_name}.exe" if sys.platform == "win32" else f"{prog_name}")
     if os.path.isfile(file_path):
         print(f"\n{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
         start_time = time.time()
