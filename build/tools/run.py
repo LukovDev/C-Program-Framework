@@ -26,7 +26,9 @@ def main() -> None:
     if os.path.isfile(file_path):
         print(f"\n{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
         start_time = time.time()
-        os.system(f"\"{os.path.normpath(file_path)} {' '.join(sys.argv[1:])}\"")
+        if sys.platform == "win32":
+            os.system(f"\"{os.path.normpath(file_path)} {' '.join(sys.argv[1:])}\"")
+        else: os.system(f"\"{os.path.normpath(file_path)}\" {' '.join(sys.argv[1:])}")
         print(f"\nExecution time: {round(time.time()-start_time, 4)}s")
     else:
         print(f"\nRun: File \"{file_path}\" not found!")
