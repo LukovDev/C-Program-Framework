@@ -123,8 +123,12 @@ def main() -> None:
     if not os.path.isdir(source_dir):
         print(f"\nBuild: Error: Directory \"{source_dir}\" not found.")
         sys.exit()
-    for file in find_files(source_dir, "c"):
-        cfiles.append(f"\"{file}\"")
+    for file in find_files(source_dir, "c"): cfiles.append(f"\"{file}\"")
+
+    # Если передан флаг о очистке объектных файлов:
+    obj_dir_path = os.path.join(build_dir, obj_dirname)
+    if any(arg in ["-c", "-clear"] for arg in sys.argv[1:]) and os.path.isdir(obj_dir_path):
+        shutil.rmtree(obj_dir_path); os.mkdir(obj_dir_path)
 
     # Поиск всех динамических библиотек:
     all_libs = find_dynamic_libs(libraries, libnames)
