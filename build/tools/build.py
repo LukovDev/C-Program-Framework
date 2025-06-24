@@ -176,9 +176,8 @@ def main() -> None:
         os.system(f"windres {icon_rc_path} {os.path.join(build_dir, obj_dirname, 'icon.o')}")
     # Если не Windows или null иконка, то удаляем объект иконки:
     elif os.path.isfile(os.path.join(build_dir, obj_dirname, "icon.o")):
-        if os.path.isfile(icon_rc_path):
-            os.remove(icon_rc_path)
         os.remove(os.path.join(build_dir, obj_dirname, "icon.o"))
+    if os.path.isfile(icon_rc_path): os.remove(icon_rc_path)
 
     # Компиляция новых и изменённых исходников:
     for path in total_objs:
