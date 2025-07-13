@@ -22,6 +22,13 @@ def find_files(path: str, form: str) -> list:
     return [p.replace("\\", "/") for p in glob.glob(os.path.join(path, f"**/*.{form}"), recursive=True)]
 
 
+# Генерируем уникальные имена объектных файлов с учётом пути:
+def generate_obj_filename(path: str, build_dir: str) -> str:
+    rel_path = os.path.splitext(path)[0]
+    rel_path_clean = rel_path.replace("/", "_").replace("\\", "_")
+    return os.path.join(build_dir, obj_dirname, rel_path_clean + ".o")
+
+
 # Ищем необходимые динамические библиотеки:
 def find_dynamic_libs(libs_dirs: str, libnames: list) -> list:
     if sys.platform.startswith("win32") or sys.platform.startswith("cygwin"): exts = ["dll"]
@@ -73,7 +80,7 @@ def check_files(metadata: dict, metadata_new: dict, build_dir: str) -> list:
 
     # Список всех целевых .o файлов из актуальных .c файлов:
     obj_files = {
-        os.path.join(build_dir, obj_dirname, os.path.splitext(os.path.basename(path))[0] + ".o"): path
+        generate_obj_filename(path, build_dir): path
         for path in metadata_new
     }
 
@@ -186,7 +193,7 @@ def main() -> None:
     # Компиляция новых и изменённых исходников:
     for path in total_objs:
         print(f"> {path}")
-        obj_path = os.path.join(build_dir, obj_dirname, os.path.splitext(os.path.basename(path))[0]+".o")
+        obj_path = generate_obj_filename(path, build_dir)
         os.system(f"{compile_flags} -c {path} -o {obj_path}")
 
     # Линкуем все объектные файлы в один:
