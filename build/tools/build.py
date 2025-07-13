@@ -24,9 +24,7 @@ def find_files(path: str, form: str) -> list:
 
 # Генерируем уникальные имена объектных файлов с учётом пути:
 def generate_obj_filename(path: str, build_dir: str) -> str:
-    rel_path = os.path.splitext(path)[0]
-    rel_path_clean = rel_path.replace("/", "_").replace("\\", "_")
-    return os.path.join(build_dir, obj_dirname, rel_path_clean + ".o")
+    return os.path.join(build_dir, obj_dirname, os.path.splitext(path)[0].replace("/", "_").replace("\\", "_") + ".o")
 
 
 # Ищем необходимые динамические библиотеки:
