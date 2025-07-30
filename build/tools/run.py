@@ -34,8 +34,8 @@ def main() -> None:
         log(f"\n{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
         start_time = time.time()
         result = subprocess.run([os.path.normpath(file_path), ' '.join(sys.argv[1:])]).returncode
-        print(f"\nExecution time: {round(time.time()-start_time, 4)}s")
-        print(f"Program executed with result: {result}")
+        print(f"\nProcess returned: {result} <{hex(result)}>")
+        print(f"Execution time: {round(time.time()-start_time, 4)}s")
     else:
         print(f"\nRun: File \"{file_path}\" not found!")
 

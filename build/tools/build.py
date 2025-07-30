@@ -253,7 +253,7 @@ def compile_file(file_path: str, compile_flags: list) -> None:
 
         # Компилируем:
         args = [comp_flag, std_flag] + compile_flags + ["-c", file_path, "-o", generate_obj_filename(file_path)]
-        subprocess.run([a for a in args if a], check=True)
+        subprocess.run([a for a in args if a], text=True, check=True)
     except subprocess.CalledProcessError as error:
         log_error(f"Compile returned status: {error.returncode}")
 
