@@ -6,30 +6,36 @@
 # Импортируем:
 import os
 import sys
-import json
 import time
-from build import bin_dirname
+import subprocess
+from build import Vars
+
+
+# Вывести лог отладки сборки:
+def log(msg: str) -> None:
+    if not Vars.build_lg: return
+    print(msg)
 
 
 # Основная функция:
 def main() -> None:
-    # Читаем конфигурационный файл сборки:
-    with open("../config.json", "r+", encoding="utf-8") as f: config = json.load(f)
+    # Инициализируем переменные:
+    Vars.init_vars("../config.json")
 
     # Преобразование данных конфигурации в переменные:
-    prog_name = config["program-name"]
-    build_dir = config["build-dir"]
+    prog_name   = Vars.prog_name
+    build_dir   = Vars.build_dn
+    bin_dirname = Vars.bin_dn
 
     # Запускаем:
     os.chdir("../../")
     file_path = os.path.join(build_dir, bin_dirname, f"{prog_name}.exe" if sys.platform == "win32" else f"{prog_name}")
     if os.path.isfile(file_path):
-        print(f"\n{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
+        log(f"\n{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
         start_time = time.time()
-        if sys.platform == "win32":
-            os.system(f"\"{os.path.normpath(file_path)} {' '.join(sys.argv[1:])}\"")
-        else: os.system(f"\"{os.path.normpath(file_path)}\" {' '.join(sys.argv[1:])}")
+        result = subprocess.run([os.path.normpath(file_path), ' '.join(sys.argv[1:])]).returncode
         print(f"\nExecution time: {round(time.time()-start_time, 4)}s")
+        print(f"Program executed with result: {result}")
     else:
         print(f"\nRun: File \"{file_path}\" not found!")
 

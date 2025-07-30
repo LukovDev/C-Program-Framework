@@ -7,6 +7,7 @@
 import os
 import sys
 
+
 # Если этот файл запускают:
 if __name__ == "__main__":
     if sys.platform == "win32":
