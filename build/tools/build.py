@@ -79,9 +79,9 @@ class Vars:
 
 
 # Вывести лог отладки сборки:
-def log(msg: str) -> None:
+def log(msg: str, end: str = "\n") -> None:
     if not Vars.build_lg: return
-    print(msg)
+    print(msg, end=end)
 
 
 # Вывести лог отладки ошибки:
