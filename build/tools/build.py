@@ -132,8 +132,10 @@ def fild_all_c_cpp_files() -> dict:
             log_error(f"\nDirectory \"{src_dir}\" not found.")
             sys.exit()
         # Ищем и сохраняем пути до найденных файлов:
-        for f in find_files(src_dir, "c"):   found_files["c"].append(f"\"{f}\"")
-        for f in find_files(src_dir, "cpp"): found_files["cpp"].append(f"\"{f}\"")
+        for f in find_files(src_dir, "c"):
+            if f"\"{f}\"" not in found_files["c"]: found_files["c"].append(f"\"{f}\"")
+        for f in find_files(src_dir, "cpp"):
+            if f"\"{f}\"" not in found_files["cpp"]: found_files["cpp"].append(f"\"{f}\"")
     return found_files
 
 
