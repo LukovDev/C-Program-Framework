@@ -3,7 +3,7 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v2.0.1> ]
+# [ C-Program-Framework BuildSystem for PC <v2.0.2> ]
 #
 
 
