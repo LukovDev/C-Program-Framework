@@ -27,6 +27,7 @@ class Vars:
     build_dn:  str  = "build/"  # build dir name.
     bin_dn:    str  = "bin"     # bin dir name.
     obj_dn:    str  = "obj"     # obj dir name.
+    libs_dn:   str  = ""        # libs dir name (in bin dir).
     build_lg:  bool = True      # Build logging.
     strip:     bool = False     # Strip.
     con_dis:   bool = False     # Console disabled (for windows).
@@ -60,6 +61,7 @@ class Vars:
         Vars.build_dn  = config["build-dir"]
         Vars.bin_dn    = config["bin-dir-name"]
         Vars.obj_dn    = config["obj-dir-name"]
+        Vars.libs_dn   = config["libs-output"]
         Vars.build_lg  = config["build-logging"]
         Vars.strip     = config["strip"]
         Vars.con_dis   = config["console-disabled"]
@@ -279,9 +281,11 @@ def link_files(linker_flags: list, linker_lib_flags: list) -> None:
 # Копируем необходимые библиотеки в папку бинара:
 def copy_libs(all_libs: list) -> None:
     try:
+        full_libs_dn = os.path.normpath(os.path.join(Vars.build_dn, Vars.bin_dn, Vars.libs_dn))
+        if not os.path.isdir(full_libs_dn): os.makedirs(full_libs_dn, exist_ok=True)
         log("Copying dynamic libraries... ", end="")
         for path in all_libs:
-            if os.path.isfile(path): shutil.copy2(path, os.path.join(Vars.build_dn, Vars.bin_dn))
+            if os.path.isfile(path): shutil.copy2(path, full_libs_dn)
         log("Done!")
     except Exception as error:
         log_error(f"Copying libs: {error}")

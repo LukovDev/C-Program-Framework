@@ -5,6 +5,7 @@
     "build-dir":     "build/",
     "bin-dir-name":  "bin",
     "obj-dir-name":  "obj",
+    "libs-output":   "",
     "build-logging": true,
     "strip":         true,
     "console-disabled": false,
