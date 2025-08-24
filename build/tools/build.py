@@ -3,7 +3,7 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v2.0.2> ]
+# [ C-Program-Framework BuildSystem for PC <v2.0.3> ]
 #
 
 
@@ -46,7 +46,8 @@ class Vars:
     link_fg:   list = []        # Linker flags (during linking).
 
     # Прочее:
-    total_src: list = []  # Список путей до исходников для компиляции.
+    total_src:   list = []     # Список путей до исходников для компиляции.
+    reset_build: bool = False  # Сбросить сборку.
 
     # Инициализировать переменные:
     @staticmethod
@@ -170,6 +171,24 @@ def check_dirs() -> None:
     os.mkdir(bin_full_dn)
 
 
+# Проверяем флаги:
+def check_flags(metadata: dict, metadata_new: dict, defines: list, includes: list, libs: list, libnames: list) -> list:
+    flags_in_meta = ["defines", "includes", "libraries", "libnames"]  # Поля флагов в метаданных.
+    logs = []  # Список логов для вывода позже.
+
+    # Проходимся и восстанавливаем поля в случае чего:
+    for flag in flags_in_meta:
+        if flag not in metadata["metainfo"]: metadata["metainfo"][flag] = []
+        if flag not in metadata_new["metainfo"]: metadata_new["metainfo"][flag] = []
+
+    # Проходимся и проверяем совпадают ли флаги:
+    for flag in flags_in_meta:
+        if metadata["metainfo"][flag] != metadata_new["metainfo"][flag]:
+            logs.append(f"\"{flag}\": {metadata['metainfo'][flag]} -> {metadata_new['metainfo'][flag]}")
+            Vars.reset_build = True  # Если хоть один набор флагов не совпадает - сбрасываем сборку.
+    return logs
+
+
 # Обрабатываем файлы:
 def process_files(metadata: dict, metadata_new: dict) -> None:
     # Получаем поле метаинформации и файлов из метаданных:
@@ -192,6 +211,10 @@ def process_files(metadata: dict, metadata_new: dict) -> None:
     obj_full_dn = os.path.join(Vars.build_dn, Vars.obj_dn)
     if m_os != m_os_new:
         log(f"BuildSystem: [/!\\] Build on a new system. Previous OS: {m_os}, Current OS: {m_os_new}")
+        Vars.reset_build = True
+
+    # Сбрасываем сборку путём удаления всех объектных файлов:
+    if Vars.reset_build:
         for file in os.listdir(obj_full_dn):
             if file.endswith(".o"): os.remove(os.path.join(obj_full_dn, file))
 
@@ -300,9 +323,8 @@ def main() -> None:
     os.chdir("../../")  # Переходим в корневую директорию из "<build-dir>/tools/".
 
     # Если передан флаг об очистке объектных файлов:
-    if any(arg in ["-c", "-clear"] for arg in sys.argv[1:]) and os.path.isdir(obj_full_dn):
-        shutil.rmtree(obj_full_dn)
-        os.mkdir(obj_full_dn)
+    if any(arg in ["-c", "-clear"] for arg in sys.argv[1:]):
+        Vars.reset_build = True
 
     # Поиск всех .c/.cpp файлов:
     found_files = fild_all_c_cpp_files()
@@ -311,10 +333,22 @@ def main() -> None:
     # Поиск всех динамических библиотек:
     all_libs = find_dynamic_libs()
 
+    # Генерация флагов сборки:
+    defines         = [f"-D{d}" for d in Vars.defines]
+    includes        = [f"-I{i}" for i in Vars.includes]
+    libraries_flags = [f"-L{p}" for p in Vars.libraries]
+    libnames_flags  = [f"-l{n}" for n in Vars.libnames]
+    strip_flag      = ("-Wl,-x" if sys.platform == "darwin" else "-s") if Vars.strip else ""
+    disconsole_flag = "-mwindows" if Vars.con_dis and sys.platform == "win32" else ""
+
     # Получаем новый metadata:
     metadata_new = {
         "metainfo": {
             "os": sys.platform,
+            "defines": defines,
+            "includes": includes,
+            "libraries": libraries_flags,
+            "libnames": libnames_flags,
         }, "files": {
             file[1:-1]: os.path.getmtime(file[1:-1])
             for file in all_files
@@ -324,16 +358,11 @@ def main() -> None:
     # Проверяем папки сборки:
     check_dirs()
 
+    # Проверяем флаги:
+    check_flags_logs = check_flags(metadata, metadata_new, defines, includes, libraries_flags, libnames_flags)
+
     # Обрабатываем файлы:
     process_files(metadata, metadata_new)
-
-    # Генерация флагов сборки:
-    defines         = [f"-D{d}" for d in Vars.defines]
-    includes        = [f"-I{i}" for i in Vars.includes]
-    libraries_flags = [f"-L{p}" for p in Vars.libraries]
-    libnames_flags  = [f"-l{n}" for n in Vars.libnames]
-    strip_flag      = ("-Wl,-x" if sys.platform == "darwin" else "-s") if Vars.strip else ""
-    disconsole_flag = "-mwindows" if Vars.con_dis and sys.platform == "win32" else ""
 
     # Флаги компиляции и линковки:
     compile_flags    = [Vars.optimiz] + defines + includes + Vars.warnings + Vars.comp_fg
@@ -346,8 +375,11 @@ def main() -> None:
         log(f"{' COMPILATION PROJECT ':-^80}")
         log(f"Compile flags: \"{' '.join([f for f in compile_flags if f])}\"")
         log(f"Linker flags: \"{' '.join([f for f in linker_flags+linker_lib_flags if f])}\"")
-        log(f"Dynamic libs: [{', '.join([os.path.basename(f) for f in all_libs])}]") if all_libs else None
-        log(f"To compile: [{', '.join(Vars.total_src)}]") if Vars.total_src else None
+        if check_flags_logs: print("Flags changes:")
+        for log_msg in check_flags_logs: log(log_msg)
+        if all_libs: log(f"Dynamic libs ({len(all_libs)}): [{', '.join([os.path.basename(f) for f in all_libs])}]")
+        if Vars.total_src: log(f"To compile ({len(Vars.total_src)}): [{', '.join(Vars.total_src)}]")
+        if Vars.reset_build: log(f"Recompiling all files (build reseted).")
         log(f"{' '*20}{'~<[PROCESS]>~':-^40}{' '*20}")
 
         # Пересоздать иконку для системы виндовс:
