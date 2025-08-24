@@ -334,10 +334,10 @@ def main() -> None:
     all_libs = find_dynamic_libs()
 
     # Генерация флагов сборки:
-    defines         = [f"-D{d}" for d in Vars.defines]
-    includes        = [f"-I{i}" for i in Vars.includes]
-    libraries_flags = [f"-L{p}" for p in Vars.libraries]
-    libnames_flags  = [f"-l{n}" for n in Vars.libnames]
+    defines         = [f"-D{d}" for d in Vars.defines if d]
+    includes        = [f"-I{i}" for i in Vars.includes if i]
+    libraries_flags = [f"-L{p}" for p in Vars.libraries if p]
+    libnames_flags  = [f"-l{n}" for n in Vars.libnames if n]
     strip_flag      = ("-Wl,-x" if sys.platform == "darwin" else "-s") if Vars.strip else ""
     disconsole_flag = "-mwindows" if Vars.con_dis and sys.platform == "win32" else ""
 
