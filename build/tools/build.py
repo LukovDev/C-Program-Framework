@@ -3,7 +3,7 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v2.0.3> ]
+# [ C-Program-Framework BuildSystem for PC <v2.0.4> ]
 #
 
 
@@ -46,8 +46,10 @@ class Vars:
     link_fg:   list = []        # Linker flags (during linking).
 
     # Прочее:
-    total_src:   list = []     # Список путей до исходников для компиляции.
-    reset_build: bool = False  # Сбросить сборку.
+    total_src:    list = []     # Список путей до исходников для компиляции.
+    reset_build:  bool = False  # Сбросить сборку.
+    build_new_os: bool = False  # Сборка на новой системе.
+    build_new_os_info: dict = {"old": "UNK", "new": "UNK"}
 
     # Инициализировать переменные:
     @staticmethod
@@ -90,7 +92,7 @@ def log(msg: str, end: str = "\n") -> None:
 # Вывести лог отладки ошибки:
 def log_error(msg: str) -> None:
     # if not Vars.build_lg: return
-    print(f"BuildSystem: [/!\\] Error: {msg}")
+    print(f"BuildSystem: [!] Error: {msg}")
     os._exit(1)  # Жёстко останавливаем сборку.
 
 
@@ -210,7 +212,9 @@ def process_files(metadata: dict, metadata_new: dict) -> None:
     # Удаляем все объектные файлы, если прошлая сборка была сделана на другой системе:
     obj_full_dn = os.path.join(Vars.build_dn, Vars.obj_dn)
     if m_os != m_os_new:
-        log(f"BuildSystem: [/!\\] Build on a new system. Previous OS: {m_os}, Current OS: {m_os_new}")
+        Vars.build_new_os = True
+        Vars.build_new_os_info["old"] = m_os
+        Vars.build_new_os_info["new"] = m_os_new
         Vars.reset_build = True
 
     # Сбрасываем сборку путём удаления всех объектных файлов:
@@ -379,6 +383,9 @@ def main() -> None:
         for log_msg in check_flags_logs: log(log_msg)
         if all_libs: log(f"Dynamic libs ({len(all_libs)}): [{', '.join([os.path.basename(f) for f in all_libs])}]")
         if Vars.total_src: log(f"To compile ({len(Vars.total_src)}): [{', '.join(Vars.total_src)}]")
+        if Vars.build_new_os:
+            old_os, new_os = Vars.build_new_os_info["old"], Vars.build_new_os_info["new"]
+            log(f"[!] Build on a new system. Previous OS: {old_os}, Current OS: {new_os}")
         if Vars.reset_build: log(f"Recompiling all files (build reseted).")
         log(f"{' '*20}{'~<[PROCESS]>~':-^40}{' '*20}")
 
