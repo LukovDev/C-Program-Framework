@@ -7,7 +7,7 @@
     "obj-dir-name":  "obj",
     "libs-output":   "",
     "build-logging": true,
-    "strip":         true,
+    "strip":         false,
     "console-disabled": false,
     "defines":       [],
     "includes":      [],
