@@ -3,7 +3,7 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v2.0.4> ]
+# [ C-Program-Framework BuildSystem for PC <v2.1.0> ]
 #
 
 
@@ -46,41 +46,44 @@ class Vars:
     link_fg:   list = []        # Linker flags (during linking).
 
     # Прочее:
-    total_src:    list = []     # Список путей до исходников для компиляции.
-    reset_build:  bool = False  # Сбросить сборку.
-    build_new_os: bool = False  # Сборка на новой системе.
+    config:        dict = {}     # Текст конфигурации.
+    total_src:     list = []     # Список путей до исходников для компиляции.
+    reset_build:   bool = False  # Сбросить сборку.
+    build_no_meta: bool = False  # Отсутствует мета-файл.
+    build_cfg_edt: bool = False  # Файл конфигурации редактирован.
+    build_new_os:  bool = False  # Сборка на новой системе.
     build_new_os_info: dict = {"old": "UNK", "new": "UNK"}
 
     # Инициализировать переменные:
     @staticmethod
     def init_vars(config_path: str) -> None:
         with open(config_path, "r+", encoding="utf-8") as f:
-            config = json.load(f)
+            Vars.config = json.load(f)
 
         # Заполняем поля данными:
-        Vars.prog_name = config["program-name"]
-        Vars.prog_icon = config["program-icon"]
-        Vars.src_dp    = config["source-dirs"]
-        Vars.build_dn  = config["build-dir"]
-        Vars.bin_dn    = config["bin-dir-name"]
-        Vars.obj_dn    = config["obj-dir-name"]
-        Vars.libs_dn   = config["libs-output"]
-        Vars.build_lg  = config["build-logging"]
-        Vars.strip     = config["strip"]
-        Vars.con_dis   = config["console-disabled"]
-        Vars.defines   = config["defines"]
-        Vars.includes  = config["includes"]
-        Vars.libraries = config["libraries"]
-        Vars.libnames  = config["libnames"]
-        Vars.optimiz   = config["optimization"]
-        Vars.std_c     = config["std-c"]
-        Vars.std_cpp   = config["std-cpp"]
-        Vars.comp_c    = config["compiler-c"]
-        Vars.comp_cpp  = config["compiler-cpp"]
-        Vars.linker    = config["linker"]
-        Vars.warnings  = config["warnings"]
-        Vars.comp_fg   = config["compile-flags"]
-        Vars.link_fg   = config["linker-flags"]
+        Vars.prog_name = Vars.config["program-name"]
+        Vars.prog_icon = Vars.config["program-icon"]
+        Vars.src_dp    = Vars.config["source-dirs"]
+        Vars.build_dn  = Vars.config["build-dir"]
+        Vars.bin_dn    = Vars.config["bin-dir-name"]
+        Vars.obj_dn    = Vars.config["obj-dir-name"]
+        Vars.libs_dn   = Vars.config["libs-output"]
+        Vars.build_lg  = Vars.config["build-logging"]
+        Vars.strip     = Vars.config["strip"]
+        Vars.con_dis   = Vars.config["console-disabled"]
+        Vars.defines   = Vars.config["defines"]
+        Vars.includes  = Vars.config["includes"]
+        Vars.libraries = Vars.config["libraries"]
+        Vars.libnames  = Vars.config["libnames"]
+        Vars.optimiz   = Vars.config["optimization"]
+        Vars.std_c     = Vars.config["std-c"]
+        Vars.std_cpp   = Vars.config["std-cpp"]
+        Vars.comp_c    = Vars.config["compiler-c"]
+        Vars.comp_cpp  = Vars.config["compiler-cpp"]
+        Vars.linker    = Vars.config["linker"]
+        Vars.warnings  = Vars.config["warnings"]
+        Vars.comp_fg   = Vars.config["compile-flags"]
+        Vars.link_fg   = Vars.config["linker-flags"]
 
 
 # Вывести лог отладки сборки:
@@ -107,15 +110,24 @@ def generate_obj_filename(path: str) -> str:
     return os.path.join(Vars.build_dn, Vars.obj_dn, norm + ".o")
 
 
+# Получить метаинформацию:
+def get_metainfo() -> dict:
+    return {
+        "os": sys.platform,
+        "config": Vars.config,
+    }
+
+
 # Читаем мета-данные:
 def load_metadata(file_path: str) -> dict:
     if not os.path.isfile(file_path):  # "<build-dir>/tools/file_path".
         with open(file_path, "w+", encoding="utf-8") as f:
             json.dump({
-                "metainfo": {
-                    "os": sys.platform,
-                }, "files": {}
+                "metainfo": get_metainfo(),
+                "files": {}
             }, f, indent=4)
+        Vars.build_no_meta = True
+        Vars.reset_build = True
     with open(file_path, "r+", encoding="utf-8") as f:
         metadata = json.load(f)
     return metadata
@@ -128,7 +140,7 @@ def save_metadata(file_path: str, data: dict) -> None:
 
 
 # Поиск всех .c/.cpp файлов:
-def fild_all_c_cpp_files() -> dict:
+def find_all_c_cpp_files() -> dict:
     found_files = {"c": [], "cpp": []}  # Найденные файлы.
 
     # Проходимся по всем папкам-исходникам:
@@ -173,22 +185,13 @@ def check_dirs() -> None:
     os.mkdir(bin_full_dn)
 
 
-# Проверяем флаги:
-def check_flags(metadata: dict, metadata_new: dict, defines: list, includes: list, libs: list, libnames: list) -> list:
-    flags_in_meta = ["defines", "includes", "libraries", "libnames"]  # Поля флагов в метаданных.
-    logs = []  # Список логов для вывода позже.
-
-    # Проходимся и восстанавливаем поля в случае чего:
-    for flag in flags_in_meta:
-        if flag not in metadata["metainfo"]: metadata["metainfo"][flag] = []
-        if flag not in metadata_new["metainfo"]: metadata_new["metainfo"][flag] = []
-
-    # Проходимся и проверяем совпадают ли флаги:
-    for flag in flags_in_meta:
-        if metadata["metainfo"][flag] != metadata_new["metainfo"][flag]:
-            logs.append(f"\"{flag}\": {metadata['metainfo'][flag]} -> {metadata_new['metainfo'][flag]}")
-            Vars.reset_build = True  # Если хоть один набор флагов не совпадает - сбрасываем сборку.
-    return logs
+# Проверяем изменение конфига:
+def check_configs(metadata: dict, metadata_new: dict) -> None:
+    # Если конфиги разные, надо сбросить сборку:
+    if ("config" not in metadata["metainfo"]) or ("config" not in metadata_new["metainfo"]) or \
+            (metadata["metainfo"]["config"] != metadata_new["metainfo"]["config"]):
+        Vars.build_cfg_edt = True
+        Vars.reset_build = True
 
 
 # Обрабатываем файлы:
@@ -198,7 +201,8 @@ def process_files(metadata: dict, metadata_new: dict) -> None:
     metainfo_new, files_new = metadata_new["metainfo"], metadata_new["files"]
 
     # Получаем имена операционных систем на которых производились сборки:
-    m_os, m_os_new = metainfo["os"] if "os" in metainfo else None, metainfo_new["os"] if "os" in metainfo_new else None
+    m_os = metainfo["os"] if "os" in metainfo else None
+    m_os_new = metainfo_new["os"] if "os" in metainfo_new else None
 
     # Находим измененные, новые и удаленные файлы:
     meta_changed, meta_added, meta_removed = [], [], []
@@ -263,7 +267,7 @@ def recreate_windows_icon() -> None:
         icon_rc_path = os.path.join(obj_full_dn, "icon.rc")
         if sys.platform == "win32" and Vars.prog_icon is not None and os.path.isfile(Vars.prog_icon):
             with open(icon_rc_path, "w+", encoding="utf-8") as f:
-                f.write(f"ResurceName ICON \"{os.path.basename(Vars.prog_icon)}\"")
+                f.write(f"IDI_ICON1 ICON \"{os.path.basename(Vars.prog_icon)}\"")
             shutil.copy(f"{Vars.prog_icon}", os.path.join(obj_full_dn))
             subprocess.run(["windres", icon_rc_path, os.path.join(obj_full_dn, 'icon.o')], check=True)
 
@@ -322,7 +326,6 @@ def copy_libs(all_libs: list) -> None:
 def main() -> None:
     Vars.init_vars("../config.json")  # Инициализируем переменные.
     metadata = load_metadata("metadata.json")  # Читаем мета-данные.
-    obj_full_dn = os.path.join(Vars.build_dn, Vars.obj_dn)
 
     os.chdir("../../")  # Переходим в корневую директорию из "<build-dir>/tools/".
 
@@ -331,7 +334,7 @@ def main() -> None:
         Vars.reset_build = True
 
     # Поиск всех .c/.cpp файлов:
-    found_files = fild_all_c_cpp_files()
+    found_files = find_all_c_cpp_files()
     all_files = found_files["c"] + found_files["cpp"]
 
     # Поиск всех динамических библиотек:
@@ -347,13 +350,8 @@ def main() -> None:
 
     # Получаем новый metadata:
     metadata_new = {
-        "metainfo": {
-            "os": sys.platform,
-            "defines": defines,
-            "includes": includes,
-            "libraries": libraries_flags,
-            "libnames": libnames_flags,
-        }, "files": {
+        "metainfo": get_metainfo(),
+        "files": {
             file[1:-1]: os.path.getmtime(file[1:-1])
             for file in all_files
         }
@@ -362,8 +360,8 @@ def main() -> None:
     # Проверяем папки сборки:
     check_dirs()
 
-    # Проверяем флаги:
-    check_flags_logs = check_flags(metadata, metadata_new, defines, includes, libraries_flags, libnames_flags)
+    # Проверяем конфиги:
+    check_configs(metadata, metadata_new)
 
     # Обрабатываем файлы:
     process_files(metadata, metadata_new)
@@ -379,10 +377,10 @@ def main() -> None:
         log(f"{' COMPILATION PROJECT ':-^80}")
         log(f"Compile flags: \"{' '.join([f for f in compile_flags if f])}\"")
         log(f"Linker flags: \"{' '.join([f for f in linker_flags+linker_lib_flags if f])}\"")
-        if check_flags_logs: print("Flags changes:")
-        for log_msg in check_flags_logs: log(log_msg)
         if all_libs: log(f"Dynamic libs ({len(all_libs)}): [{', '.join([os.path.basename(f) for f in all_libs])}]")
         if Vars.total_src: log(f"To compile ({len(Vars.total_src)}): [{', '.join(Vars.total_src)}]")
+        if Vars.build_no_meta: log(f"[!] File not found \"metadata.json\".")
+        if Vars.build_cfg_edt: log(f"[!] Build config edited.")
         if Vars.build_new_os:
             old_os, new_os = Vars.build_new_os_info["old"], Vars.build_new_os_info["new"]
             log(f"[!] Build on a new system. Previous OS: {old_os}, Current OS: {new_os}")
