@@ -6,6 +6,8 @@
 # [ C-Program-Framework BuildSystem for PC <v2.1.0> ]
 #
 
+VERSION = "2.1.0"  # Версия этой системы сборки.
+
 
 # Импортируем:
 import os
@@ -49,6 +51,9 @@ class Vars:
     config:        dict = {}     # Текст конфигурации.
     total_src:     list = []     # Список путей до исходников для компиляции.
     reset_build:   bool = False  # Сбросить сборку.
+
+    # Причины сброса сборки:
+    build_clear:   bool = False  # Очистка сборки.
     build_no_meta: bool = False  # Отсутствует мета-файл.
     build_cfg_edt: bool = False  # Файл конфигурации редактирован.
     build_new_os:  bool = False  # Сборка на новой системе.
@@ -331,7 +336,12 @@ def main() -> None:
 
     # Если передан флаг об очистке объектных файлов:
     if any(arg in ["-c", "-clear"] for arg in sys.argv[1:]):
+        Vars.build_clear = True
         Vars.reset_build = True
+
+    # Если передан флаг для получения версии системы сборки:
+    if any(arg in ["-v", "-version"] for arg in sys.argv[1:]):
+        log(f"C-Program-Framework BuildSystem for PC <v{VERSION}>")
 
     # Поиск всех .c/.cpp файлов:
     found_files = find_all_c_cpp_files()
@@ -379,6 +389,7 @@ def main() -> None:
         log(f"Linker flags: \"{' '.join([f for f in linker_flags+linker_lib_flags if f])}\"")
         if all_libs: log(f"Dynamic libs ({len(all_libs)}): [{', '.join([os.path.basename(f) for f in all_libs])}]")
         if Vars.total_src: log(f"To compile ({len(Vars.total_src)}): [{', '.join(Vars.total_src)}]")
+        if Vars.build_clear: log(f"[!] Used clear flag for reset build.")
         if Vars.build_no_meta: log(f"[!] File not found \"metadata.json\".")
         if Vars.build_cfg_edt: log(f"[!] Build config edited.")
         if Vars.build_new_os:
