@@ -104,6 +104,36 @@ def log_error(msg: str) -> None:
     os._exit(1)  # Жёстко останавливаем сборку.
 
 
+# Обработать аргументы:
+def handle_args() -> None:
+    is_exit = False
+    for arg in sys.argv[1:]:
+        # Если передан флаг об очистке объектных файлов:
+        if arg in ["-c", "-clear"]:
+            Vars.build_clear = True
+            Vars.reset_build = True
+
+        # Если передан флаг для получения версии системы сборки:
+        elif arg in ["-v", "-version"]:
+            log(f"\nC-Program-Framework BuildSystem for PC <v{VERSION}>\n")
+            is_exit = True
+
+        # Если передан флаг для получения помощи:
+        elif arg in ["-h", "-help"]:
+            log("\n"
+                "+ List of arguments:\n"
+                "| [-c] / [-clear] - Delete previous build and build it again (Build is running).\n|\n"
+                "| [-v] / [-version] - Get version of the build system (Build is not start).\n|\n"
+                "| [-h] / [-help] - Get help with the startup arguments (Build is not start).\n+\n"
+            )
+            is_exit = True
+
+        # Неизвестная команда:
+        else:
+            log(f"Unknown argument: \"{arg}\"")
+    if is_exit: sys.exit(0)
+
+
 # Функция для поиска всех файлов определённого формата:
 def find_files(path: str, form: str) -> list:
     return [p.replace("\\", "/") for p in glob.glob(os.path.join(path, f"**/*.{form}"), recursive=True)]
@@ -334,14 +364,8 @@ def main() -> None:
 
     os.chdir("../../")  # Переходим в корневую директорию из "<build-dir>/tools/".
 
-    # Если передан флаг об очистке объектных файлов:
-    if any(arg in ["-c", "-clear"] for arg in sys.argv[1:]):
-        Vars.build_clear = True
-        Vars.reset_build = True
-
-    # Если передан флаг для получения версии системы сборки:
-    if any(arg in ["-v", "-version"] for arg in sys.argv[1:]):
-        log(f"C-Program-Framework BuildSystem for PC <v{VERSION}>")
+    # Обработать аргументы:
+    handle_args()
 
     # Поиск всех .c/.cpp файлов:
     found_files = find_all_c_cpp_files()
