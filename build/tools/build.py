@@ -253,6 +253,7 @@ def generate_obj_filename(path: str) -> str:
 def get_metainfo() -> dict:
     return {
         "os": sys.platform,
+        "build-system-version": VERSION,
         "config": Vars.config,
     }
 
@@ -269,6 +270,10 @@ def load_metadata(file_path: str) -> dict:
         Vars.reset_build = True
     with open(file_path, "r+", encoding="utf-8") as f:
         metadata = json.load(f)
+    # Если не указана версия системы сборки, или она не совпадает с этой - пересоздаём:
+    if "build-system-version" not in metadata["metainfo"] or metadata["metainfo"]["build-system-version"] != VERSION:
+        os.remove(file_path)
+        metadata = load_metadata(file_path)
     return metadata
 
 
