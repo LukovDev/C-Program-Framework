@@ -691,7 +691,7 @@ def main() -> None:
         # Выполняем команды после сборки по очереди:
         if Vars.cmd_aft_bld: print("")
         for command in Vars.cmd_aft_bld:
-            subprocess.run([a for a in command.split(" ") if a], text=True, check=True)
+            subprocess.run(command, text=True, check=True, shell=True)
     except Exception as error:
         log_error(f"{error}")
 
