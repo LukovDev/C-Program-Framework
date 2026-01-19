@@ -18,10 +18,15 @@
     "optimization":  "-O2",
     "std-c":         "c17",
     "std-cpp":       "c++17",
+    "compiler-s":    "gcc",
     "compiler-c":    "gcc",
     "compiler-cpp":  "g++",
     "linker":        "g++",
+    "ld-file":       "",
     "warnings":      ["-Wall"],
-    "compile-flags": [],
-    "linker-flags":  []
+    "compile-flags-s": [],
+    "compile-flags-c": [],
+    "compile-flags-cpp": [],
+    "linker-flags":  [],
+    "commands-after-build": []
 }

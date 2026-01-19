@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v3.0.0> ]
+# [ C-Program-Framework BuildSystem for PC <v3.1.0> ]
 #
 
-VERSION = "3.0.0"  # Версия этой системы сборки.
+VERSION = "3.1.0"  # Версия этой системы сборки.
 
 
 # Импортируем:
@@ -26,33 +26,39 @@ from concurrent.futures import ThreadPoolExecutor
 # Класс глобальных переменных:
 class Vars:
     # Конфигурация:
-    prog_name: str  = "Undefined"
-    prog_icon: str  = None      # None | str.
-    src_dp:    list = ["str/"]  # src dirs (paths).
-    build_dn:  str  = "build/"  # build dir name.
-    bin_dn:    str  = "bin"     # bin dir name.
-    obj_dn:    str  = "obj"     # obj dir name.
-    libs_dn:   str  = ""        # libs dir name (in bin dir).
-    build_lg:  bool = True      # Build logging.
-    m_threads: bool = True      # Multi-thread building.
-    strip:     bool = False     # Strip.
-    prog_perc: bool = True      # Show progress in percent.
-    con_dis:   bool = False     # Console disabled (for windows).
-    defines:   list = []        # Defines on compilation.
-    includes:  list = []        # Include dirs (paths).
-    libraries: list = []        # Libraries dirs (paths).
-    libnames:  list = []        # Libraries names.
-    optimiz:   str  = "-O0"     # Code optimization level.
-    std_c:     str  = "c17"     # Std C version.
-    std_cpp:   str  = "c++17"   # Std C++ version.
-    comp_c:    str  = "gcc"     # C Compiler.
-    comp_cpp:  str  = "g++"     # C++ Compiler.
-    linker:    str  = "g++"     # Linker.
-    warnings:  list = []        # Warning flags.
-    comp_fg:   list = []        # Compiler flags (during compiling).
-    link_fg:   list = []        # Linker flags (during linking).
+    prog_name:   str  = "Undefined"
+    prog_icon:   str  = None      # None | str.
+    src_dp:      list = ["str/"]  # src dirs (paths).
+    build_dn:    str  = "build/"  # build dir name.
+    bin_dn:      str  = "bin"     # bin dir name.
+    obj_dn:      str  = "obj"     # obj dir name.
+    libs_dn:     str  = ""        # libs dir name (in bin dir).
+    build_lg:    bool = True      # Build logging.
+    m_threads:   bool = True      # Multi-thread building.
+    strip:       bool = False     # Strip.
+    prog_perc:   bool = True      # Show progress in percent.
+    con_dis:     bool = False     # Console disabled (for windows).
+    defines:     list = []        # Defines on compilation.
+    includes:    list = []        # Include dirs (paths).
+    libraries:   list = []        # Libraries dirs (paths).
+    libnames:    list = []        # Libraries names.
+    optimiz:     str  = "-O0"     # Code optimization level.
+    std_c:       str  = "c17"     # Std C version.
+    std_cpp:     str  = "c++17"   # Std C++ version.
+    comp_s:      str  = "gcc"     # Assembler.
+    comp_c:      str  = "gcc"     # C Compiler.
+    comp_cpp:    str  = "g++"     # C++ Compiler.
+    linker:      str  = "g++"     # Linker.
+    ld_file:     str  = None      # Linker script.
+    warnings:    list = []        # Warning flags.
+    comp_fg_s:   list = []        # Assembler flags (during compiling).
+    comp_fg_c:   list = []        # C flags (during compiling).
+    comp_fg_cpp: list = []        # C++ flags (during compiling).
+    link_fg:     list = []        # Linker flags (during linking).
+    cmd_aft_bld: list = []        # Commands to run after build.
 
     # Прочее:
+    config_file:   str  = "build/config.json"  # Путь до файла конфигурации.
     config:        dict = {}      # Текст конфигурации.
     total_src:     list = []      # Список путей до исходников для компиляции.
     reset_build:   bool = False   # Сбросить сборку.
@@ -85,31 +91,36 @@ class Vars:
             Vars.config = json.load(f)
 
         # Заполняем поля данными:
-        Vars.prog_name = Vars.config["program-name"]
-        Vars.prog_icon = Vars.config["program-icon"]
-        Vars.src_dp    = Vars.config["source-dirs"]
-        Vars.build_dn  = Vars.config["build-dir"]
-        Vars.bin_dn    = Vars.config["bin-dir-name"]
-        Vars.obj_dn    = Vars.config["obj-dir-name"]
-        Vars.libs_dn   = Vars.config["libs-output"]
-        Vars.build_lg  = Vars.config["build-logging"]
-        Vars.m_threads = Vars.config["multi-threads"]
-        Vars.strip     = Vars.config["strip"]
-        Vars.prog_perc = Vars.config["progress-percent"]
-        Vars.con_dis   = Vars.config["console-disabled"]
-        Vars.defines   = Vars.config["defines"]
-        Vars.includes  = Vars.config["includes"]
-        Vars.libraries = Vars.config["libraries"]
-        Vars.libnames  = Vars.config["libnames"]
-        Vars.optimiz   = Vars.config["optimization"]
-        Vars.std_c     = Vars.config["std-c"]
-        Vars.std_cpp   = Vars.config["std-cpp"]
-        Vars.comp_c    = Vars.config["compiler-c"]
-        Vars.comp_cpp  = Vars.config["compiler-cpp"]
-        Vars.linker    = Vars.config["linker"]
-        Vars.warnings  = Vars.config["warnings"]
-        Vars.comp_fg   = Vars.config["compile-flags"]
-        Vars.link_fg   = Vars.config["linker-flags"]
+        Vars.prog_name   = Vars.config["program-name"]
+        Vars.prog_icon   = Vars.config["program-icon"]
+        Vars.src_dp      = Vars.config["source-dirs"]
+        Vars.build_dn    = Vars.config["build-dir"]
+        Vars.bin_dn      = Vars.config["bin-dir-name"]
+        Vars.obj_dn      = Vars.config["obj-dir-name"]
+        Vars.libs_dn     = Vars.config["libs-output"]
+        Vars.build_lg    = Vars.config["build-logging"]
+        Vars.m_threads   = Vars.config["multi-threads"]
+        Vars.strip       = Vars.config["strip"]
+        Vars.prog_perc   = Vars.config["progress-percent"]
+        Vars.con_dis     = Vars.config["console-disabled"]
+        Vars.defines     = Vars.config["defines"]
+        Vars.includes    = Vars.config["includes"]
+        Vars.libraries   = Vars.config["libraries"]
+        Vars.libnames    = Vars.config["libnames"]
+        Vars.optimiz     = Vars.config["optimization"]
+        Vars.std_c       = Vars.config["std-c"]
+        Vars.std_cpp     = Vars.config["std-cpp"]
+        Vars.comp_s      = Vars.config["compiler-s"]
+        Vars.comp_c      = Vars.config["compiler-c"]
+        Vars.comp_cpp    = Vars.config["compiler-cpp"]
+        Vars.linker      = Vars.config["linker"]
+        Vars.ld_file     = Vars.config["ld-file"]
+        Vars.warnings    = Vars.config["warnings"]
+        Vars.comp_fg_s   = Vars.config["compile-flags-s"]
+        Vars.comp_fg_c   = Vars.config["compile-flags-c"]
+        Vars.comp_fg_cpp = Vars.config["compile-flags-cpp"]
+        Vars.link_fg     = Vars.config["linker-flags"]
+        Vars.cmd_aft_bld = Vars.config["commands-after-build"]
 
 
 # Отдельный поток для вывода логов компиляции:
@@ -153,13 +164,17 @@ def log(msg: str, end: str = "\n") -> None:
 def log_error(msg: str) -> None:
     # if not Vars.build_lg: return
     print(f"BuildSystem: [!] Error: {msg}")
+    log(f"{'-'*80}")
     os._exit(1)  # Жёстко останавливаем сборку.
 
 
 # Обработать аргументы:
 def handle_args() -> None:
     is_exit = False
+    skip_next_arg = False
     for arg in sys.argv[1:]:
+        if skip_next_arg: continue
+
         # Если передан флаг об очистке объектных файлов:
         if arg in ["-c", "-clear"]:
             Vars.build_clear = True
@@ -170,19 +185,24 @@ def handle_args() -> None:
             log(f"\nC-Program-Framework BuildSystem for PC <v{VERSION}>\n")
             is_exit = True
 
+        # Если передан флаг файла конфигурации:
+        elif arg in ["-cfg", "-config"]:
+            Vars.config_file = sys.argv[sys.argv.index(arg)+1]
+            skip_next_arg = True
+
         # Если передан флаг для получения помощи:
         elif arg in ["-h", "-help"]:
             log("\n"
                 "+ List of arguments:\n"
-                "| [-c] / [-clear] - Delete previous build and build it again (Build is running).\n|\n"
-                "| [-v] / [-version] - Get version of the build system (Build is not start).\n|\n"
-                "| [-h] / [-help] - Get help with the startup arguments (Build is not start).\n+\n"
+                "| [ -c ] / [-clear] - Delete previous build and build it again (Build is running).\n|\n"
+                "| [ -v ] / [-version] - Get version of the build system (Build is not start).\n|\n"
+                "| [-cfg] / [-config] - Specify the build configuration file (Build is running).\n|\n"
+                "| [ -h ] / [-help] - Get help with the startup arguments (Build is not start).\n+\n"
             )
             is_exit = True
 
         # Неизвестная команда:
-        else:
-            log(f"Unknown argument: \"{arg}\"")
+        else: log(f"Unknown argument: \"{arg}\"")
     if is_exit: sys.exit(0)
 
 
@@ -337,20 +357,29 @@ def get_new_metadata(all_files: list) -> dict:
     }
 
 
-# Поиск всех .c/.cpp файлов:
-def find_all_c_cpp_files() -> dict:
-    found_files = {"c": [], "cpp": []}  # Найденные файлы.
+# Поиск всех целевых файлов:
+def find_all_target_files() -> dict:
+    found_files = {}  # Найденные файлы (ключ - расширение. Ключи создаются автоматически).
 
     # Проходимся по всем папкам-исходникам:
     for src_dir in Vars.src_dp:
         if not os.path.isdir(src_dir):
             log_error(f"\nDirectory \"{src_dir}\" not found.")
             sys.exit()
+
+        # Функция для поиска всех файлов с указанным расширением:
+        def find_and_append(src_dir: str, format: str) -> None:
+            if format not in found_files: found_files[format] = []  # Создаём ключ (расширение), если его нет.
+            for f in find_files(src_dir, format):
+                if f"\"{f}\"" not in found_files[format]: found_files[format].append(f"\"{f}\"")
+
         # Ищем и сохраняем пути до найденных файлов:
-        for f in find_files(src_dir, "c"):
-            if f"\"{f}\"" not in found_files["c"]: found_files["c"].append(f"\"{f}\"")
-        for f in find_files(src_dir, "cpp"):
-            if f"\"{f}\"" not in found_files["cpp"]: found_files["cpp"].append(f"\"{f}\"")
+        find_and_append(src_dir, "s")    # [Assembler].
+        find_and_append(src_dir, "c")    # [C].
+        find_and_append(src_dir, "cpp")  # [C++].
+        # <-- Вы можете добавить свой формат сюда.
+        # !ВАЖНО! После добавления нового формата, не забудьте отредактировать функцию `compile_file()`
+        # добавив новое условие для обработки и компиляции вашего формата!
     return found_files
 
 
@@ -495,12 +524,36 @@ def recreate_windows_icon() -> None:
 # Компилировать файл:
 def compile_file(file_path: str, compile_flags: list) -> None:
     try:
-        if   os.path.splitext(file_path)[1] == ".c":   comp_flag, std_flag = f"{Vars.comp_c}",   f"-std={Vars.std_c}"
-        elif os.path.splitext(file_path)[1] == ".cpp": comp_flag, std_flag = f"{Vars.comp_cpp}", f"-std={Vars.std_cpp}"
+        file_format = os.path.splitext(file_path)[1]
+        # [Assember]:
+        if file_format in [".s", ".S"]:
+            comp_flag   = f"{Vars.comp_s}"
+            std_flag    = ""
+            other_flags = Vars.comp_fg_s
+        # [C]:
+        elif file_format in [".c"]:
+            comp_flag   = f"{Vars.comp_c}"
+            std_flag    = f"-std={Vars.std_c}"
+            other_flags = Vars.comp_fg_c
+        # [C++]:
+        elif file_format in [".cpp"]:
+            comp_flag   = f"{Vars.comp_cpp}"
+            std_flag    = f"-std={Vars.std_cpp}"
+            other_flags = Vars.comp_fg_cpp
+        """
+        # [Новый формат]:
+        elif file_format in ["формат_1", "формат_2", ...]:
+            comp_flag   = Компилятор.
+            std_flag    = При необходимости, укажите стандарт (если это C/C++ подобное).
+            other_flags = Флаги компиляции вашего формата.
+        """
+        # <-- ОБЯЗАТЕЛЬНО ДОБАВЬТЕ ТУТ УСЛОВИЯ ДЛЯ КОМПИЛЯЦИИ НОВЫХ ФОРМАТОВ ФАЙЛОВ (по аналогии условий выше)!!!
+
         Vars.log_queue.append(f"{file_path}")
 
         # Компилируем:
-        args = [comp_flag, std_flag] + compile_flags + ["-c", file_path, "-o", generate_obj_filename(file_path)]
+        flags = compile_flags + other_flags
+        args = [comp_flag, std_flag] + flags + ["-c", file_path, "-o", generate_obj_filename(file_path)]
         subprocess.run([a for a in args if a], text=True, check=True)
 
         with Vars.compile_lock: Vars.real_compiled += 1
@@ -543,18 +596,18 @@ def copy_libs(all_libs: list) -> None:
 
 # Основная функция:
 def main() -> None:
-    Vars.init_vars("../config.json")  # Инициализируем переменные.
+    # Обработать аргументы:
+    handle_args()
+
     metadata = load_metadata("metadata.json")  # Читаем мета-данные.
     Vars.cpu_threads = os.cpu_count()  # Узнаем количество ядер.
 
     os.chdir("../../")  # Переходим в корневую директорию из "<build-dir>/tools/".
+    Vars.init_vars(Vars.config_file)  # Инициализируем переменные.
 
-    # Обработать аргументы:
-    handle_args()
-
-    # Поиск всех .c/.cpp файлов:
-    found_files = find_all_c_cpp_files()
-    all_files = found_files["c"] + found_files["cpp"]
+    # Поиск всех целевых файлов:
+    found_files = find_all_target_files()
+    all_files = [file for ftype in found_files.values() for file in ftype]
 
     # Поиск всех динамических библиотек:
     all_libs = find_dynamic_libs()
@@ -566,10 +619,11 @@ def main() -> None:
     libnames_flags  = [f"-l{n}" for n in Vars.libnames if n]
     strip_flag      = ("-Wl,-x" if sys.platform == "darwin" else "-s") if Vars.strip else ""
     disconsole_flag = "-mwindows" if Vars.con_dis and sys.platform == "win32" else ""
+    ld_file         = [f"-T{Vars.ld_file}" if Vars.ld_file else ""]
 
     # Флаги компиляции и линковки:
-    compile_flags    = [Vars.optimiz] + defines + includes + Vars.warnings + Vars.comp_fg
-    linker_flags     = [f for f in [strip_flag, disconsole_flag] if f] + Vars.link_fg
+    compile_flags    = [Vars.optimiz] + defines + includes + Vars.warnings
+    linker_flags     = [f for f in [strip_flag, disconsole_flag] if f] + ld_file + Vars.link_fg
     linker_lib_flags = libraries_flags + libnames_flags
 
     # Собираем программу:
@@ -577,8 +631,8 @@ def main() -> None:
         # Первая часть вывода информации:
         start_time = time.time()
         log(f"{' BUILDING THE PROJECT ':-^80}")
-        log(f"Compile flags: \"{' '.join([f for f in compile_flags if f])}\"")
-        log(f"Linker flags: \"{' '.join([f for f in linker_flags+linker_lib_flags if f])}\"")
+        # log(f"Compile flags: \"{' '.join([f for f in compile_flags if f])}\"")
+        # log(f"Linker flags: \"{' '.join([f for f in linker_flags+linker_lib_flags if f])}\"")
         if all_libs: log(f"Dynamic libs ({len(all_libs)}): [{', '.join([os.path.basename(f) for f in all_libs])}]")
         if Vars.m_threads: log(f"Using {Vars.cpu_threads} cpu threads.")
 
@@ -619,7 +673,7 @@ def main() -> None:
             # Просто компилируем поочередно:
             for path in Vars.total_src:
                 compile_file(path, compile_flags)
-        Vars.compile_done = True
+        Vars.compile_done = True  # Все потоки компиляции завершены. Счетчик компиляции должен быть обновлен.
         log_compile_thread.join()  # Ждём завершение вывода логов компиляции.
 
         # Линкуем все объектные файлы в один исполняемый:
@@ -633,6 +687,11 @@ def main() -> None:
         save_metadata("tools/metadata.json", metadata_new)
 
         log(f"{'-'*80}")
+
+        # Выполняем команды после сборки по очереди:
+        if Vars.cmd_aft_bld: print("")
+        for command in Vars.cmd_aft_bld:
+            subprocess.run([a for a in command.split(" ") if a], text=True, check=True)
     except Exception as error:
         log_error(f"{error}")
 
