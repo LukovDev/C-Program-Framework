@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v3.1.0> ]
+# [ C-Program-Framework BuildSystem for PC <v3.1.1> ]
 #
 
-VERSION = "3.1.0"  # Версия этой системы сборки.
+VERSION = "3.1.1"  # Версия этой системы сборки.
 
 
 # Импортируем:
@@ -623,7 +623,7 @@ def main() -> None:
 
     # Флаги компиляции и линковки:
     compile_flags    = [Vars.optimiz] + defines + includes + Vars.warnings
-    linker_flags     = [f for f in [strip_flag, disconsole_flag] if f] + ld_file + Vars.link_fg
+    linker_flags     = [Vars.optimiz] + [f for f in [strip_flag, disconsole_flag] if f] + ld_file + Vars.link_fg
     linker_lib_flags = libraries_flags + libnames_flags
 
     # Собираем программу:
