@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v3.1.1> ]
+# [ C-Program-Framework BuildSystem for PC <v3.1.2> ]
 #
 
-VERSION = "3.1.1"  # Версия этой системы сборки.
+VERSION = "3.1.2"  # Версия этой системы сборки.
 
 
 # Импортируем:
