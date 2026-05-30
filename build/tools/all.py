@@ -10,6 +10,7 @@ import sys
 
 # Если этот файл запускают:
 if __name__ == "__main__":
+    cfg = "build/config.json"
     if sys.platform == "win32":
-        os.system("build.bat && run.bat")
-    else: os.system("bash build.sh && bash run.sh")
+        os.system(f"build.bat -cfg {cfg} && run.bat -cfg {cfg}")
+    else: os.system(f"bash build.sh -cfg {cfg} && bash run.sh -cfg {cfg}")

@@ -19,8 +19,14 @@ def log(msg: str, end: str = "\n") -> None:
 
 # Основная функция:
 def main() -> None:
+    config_file = f"{Vars.build_dn}/config.json"
+    for arg in sys.argv[1:]:
+        if arg in ["-cfg", "-config"]:
+            config_file = sys.argv[sys.argv.index(arg)+1]
+
     # Инициализируем переменные:
-    Vars.init_vars("../config.json")
+    os.chdir("../../")
+    Vars.init_vars(config_file)
 
     # Преобразование данных конфигурации в переменные:
     prog_name   = Vars.prog_name
@@ -28,7 +34,6 @@ def main() -> None:
     bin_dirname = Vars.bin_dn
 
     # Запускаем:
-    os.chdir("../../")
     file_path = os.path.join(build_dir, bin_dirname, f"{prog_name}.exe" if sys.platform == "win32" else f"{prog_name}")
     if os.path.isfile(file_path):
         log(f"\n{' '*20}{'~<[PROGRAM OUTPUT]>~':-^40}{' '*20}")
