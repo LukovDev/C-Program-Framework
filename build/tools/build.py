@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v3.1.2> ]
+# [ C-Program-Framework BuildSystem for PC <v3.2.0> ]
 #
 
-VERSION = "3.1.2"  # Версия этой системы сборки.
+VERSION = "3.2.0"
 
 
 # Импортируем:
@@ -17,6 +17,7 @@ import glob
 import json
 import time
 import shutil
+import hashlib
 import subprocess
 from functools import partial
 from threading import Thread, Lock
@@ -42,7 +43,7 @@ class Vars:
     includes:    list = []        # Include dirs (paths).
     libraries:   list = []        # Libraries dirs (paths).
     libnames:    list = []        # Libraries names.
-    optimiz:     str  = "-O0"     # Code optimization level.
+    optimiz:     str  = "-O2"     # Code optimization level.
     std_c:       str  = "c17"     # Std C version.
     std_cpp:     str  = "c++17"   # Std C++ version.
     comp_s:      str  = "gcc"     # Assembler.
@@ -58,7 +59,7 @@ class Vars:
     cmd_aft_bld: list = []        # Commands to run after build.
 
     # Прочее:
-    config_file:   str  = "build/config.json"  # Путь до файла конфигурации.
+    config_file:   str  = "build/config.json"  # Путь до файла конфигурации (по умолчанию).
     config:        dict = {}      # Текст конфигурации.
     total_src:     list = []      # Список путей до исходников для компиляции.
     reset_build:   bool = False   # Сбросить сборку.
@@ -75,7 +76,7 @@ class Vars:
     to_analys:     int  = 0       # Сколько должно быть анализировано.
     analys_done:   bool = False   # Анализ завершен.
 
-    header_mtime_cache: dict = {}  # Глобальный кэш времени модификации заголовочных файлов.
+    header_hash_cache: dict = {}  # Глобальный кэш хэшей заголовочных файлов.
 
     # Причины сброса сборки:
     build_clear:   bool = False  # Очистка сборки.
@@ -206,13 +207,23 @@ def handle_args() -> None:
     if is_exit: sys.exit(0)
 
 
+# Получить хэш файла:
+def get_file_hash(path: str) -> str | None:
+    sha256 = hashlib.sha256()
+    try:
+        with open(path, "rb") as f:
+            return hashlib.file_digest(f, "md5").hexdigest()
+        return sha256.hexdigest()
+    except Exception: return None
+
+
 # Глобальный кэш для всех заголовков:
-def get_header_mtime(path) -> float:
-    if path in Vars.header_mtime_cache:
-        return Vars.header_mtime_cache[path]
-    mtime = os.path.getmtime(path)
-    Vars.header_mtime_cache[path] = mtime
-    return mtime
+def get_header_hash(path: str) -> float:
+    # Возвращаем если уже есть в кэше:
+    if path in Vars.header_hash_cache: return Vars.header_hash_cache[path]
+    # Получаем, добавляем и возвращаем если нету:
+    Vars.header_hash_cache[path] = get_file_hash(path)
+    return Vars.header_hash_cache[path]
 
 
 # Рекурсивно собирает все заголовочные файлы, включая вложенные, из исходника:
@@ -227,7 +238,7 @@ def collect_all_includes(path: str, inc_dirs: list[str] = None, _visited=None, _
     if path in _visited or not os.path.isfile(path): return _found
     _visited.add(path)  # Добавляем в посещенные.
 
-    src_dir = os.path.dirname(path)  # Директория текущего файла, нужна, чтобы искать локальные include’ы.
+    src_dir = os.path.dirname(path)  # Директория текущего файла, нужна, чтобы искать локальные include.
 
     try:
         # Чтение файла построчно:
@@ -250,12 +261,12 @@ def collect_all_includes(path: str, inc_dirs: list[str] = None, _visited=None, _
                 for inc_path in candidate_paths:
                     if os.path.isfile(inc_path):
                         if inc_path in _found: break  # Уже есть в словаре.
-                        _found[inc_path] = get_header_mtime(inc_path)
-                        # Рекурсивно собираем include’ы этого заголовка:
+                        _found[inc_path] = get_header_hash(inc_path)
+                        # Рекурсивно собираем include этого заголовка:
                         collect_all_includes(inc_path, inc_dirs, _visited, _found)
                         break
     except Exception: pass
-    return _found  # {путь_до_заголовка: время_изменения, ...}
+    return _found  # {путь_до_заголовка: его_хэш_сумма, ...}
 
 
 # Функция для поиска всех файлов определённого формата:
@@ -348,9 +359,9 @@ def get_new_metadata(all_files: list) -> dict:
     return {
         "metainfo": get_metainfo(),
         "files": {
-            # Путь_до_исходника: {"time": время_изменения, "headers": словарь_зависимостей}
+            # Путь_до_исходника: {"hash": хэш_файла, "headers": словарь_зависимостей. Ключ=путь, Значение=хэш}.
             f[0].strip('"'): {
-                "time": os.path.getmtime(f[0].strip('"')),
+                "hash": get_file_hash(f[0].strip('"')),
                 "headers": f[1]
             } for f in new_all_files
         }
@@ -434,18 +445,18 @@ def process_files(metadata: dict, metadata_new: dict) -> None:
     # Находим измененные, новые и удаленные файлы:
     meta_changed, meta_added, meta_removed = [], [], []
     for path, data_new in files_new.items():
-        time_new, headers_new = data_new["time"], data_new["headers"]
+        hash_new, headers_new = data_new["hash"], data_new["headers"]
         if path not in files:
             meta_added.append(path)
             continue
 
-        # Проверяем время изменения исходника:
+        # Проверяем хэш исходника:
         changed = False
-        time_old, headers_old = files[path]["time"], files[path]["headers"]
-        if time_old != time_new: changed = True
-        else:  # Иначе проверяем время изменения заголовков:
-            for h, htime in headers_new.items():
-                if h not in headers_old or headers_old[h] != htime:
+        hash_old, headers_old = files[path]["hash"], files[path]["headers"]
+        if hash_old != hash_new: changed = True
+        else:  # Иначе проверяем хэш заголовков:
+            for h, hhash in headers_new.items():
+                if h not in headers_old or headers_old[h] != hhash:
                     changed = True
                     break
 
