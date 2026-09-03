@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v3.2.0> ]
+# [ C-Program-Framework BuildSystem for PC <v3.2.1> ]
 #
 
-VERSION = "3.2.0"
+VERSION = "3.2.1"
 
 
 # Импортируем:
@@ -503,6 +503,7 @@ def process_files(metadata: dict, metadata_new: dict) -> None:
         if src_path not in total_src and not os.path.isfile(obj_path):
             total_src.append(src_path)
     Vars.total_src = total_src  # Обновляем массив исходников.
+    Vars.total_src.sort(key=os.path.getsize, reverse=True)  # Сортируем файлы от больших к меньшим.
 
 
 # Пересоздать иконку для системы виндовс:
