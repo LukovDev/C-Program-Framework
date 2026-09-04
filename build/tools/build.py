@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v3.2.1> ]
+# [ C-Program-Framework BuildSystem for PC <v3.2.2> ]
 #
 
-VERSION = "3.2.1"
+VERSION = "3.2.2"
 
 
 # Импортируем:
@@ -299,8 +299,13 @@ def load_metadata(file_path: str) -> dict:
             }, f, indent=4)
         Vars.build_no_meta = True
         Vars.reset_build = True
-    with open(file_path, "r+", encoding="utf-8") as f:
-        metadata = json.load(f)
+    try:
+        with open(file_path, "r+", encoding="utf-8") as f:
+            metadata = json.load(f)
+    except Exception:
+        # Если файл повреждён, то удаляем его и создаём новый:
+        os.remove(file_path)
+        metadata = load_metadata(file_path)
     # Если не указана версия системы сборки, или она не совпадает с этой - пересоздаём:
     if "build-system-version" not in metadata["metainfo"] or metadata["metainfo"]["build-system-version"] != VERSION:
         os.remove(file_path)
