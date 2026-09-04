@@ -18,26 +18,6 @@ def log(msg: str, end: str = "\n") -> None:
 
 
 # Основная функция:
-#
-# run.py - Скрипт запуска готовой программы.
-#
-
-
-# Импортируем:
-import os
-import sys
-import time
-import subprocess
-from build import Vars
-
-
-# Вывести лог отладки сборки:
-def log(msg: str, end: str = "\n") -> None:
-    if not Vars.build_lg: return
-    print(msg, end=end)
-
-
-# Основная функция:
 def main() -> None:
     config_file = f"{Vars.build_dn}/config.json"
     args, skip = [], False
