@@ -20,10 +20,12 @@ def log(msg: str, end: str = "\n") -> None:
 # Основная функция:
 def main() -> None:
     config_file = f"{Vars.build_dn}/config.json"
-    args = sys.argv
+    args, skip = [], False
     for arg in sys.argv[1:]:
+        if skip: skip = False; continue
         if arg in ["-cfg", "-config"]:
             config_file = sys.argv[sys.argv.index(arg)+1]
+            skip = True
         else: args.append(arg)
 
     # Инициализируем переменные:
