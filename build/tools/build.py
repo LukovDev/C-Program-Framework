@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v3.2.2> ]
+# [ C-Program-Framework BuildSystem for PC <v4.0.0> ]
 #
 
-VERSION = "3.2.2"
+VERSION = "4.0.0"
 
 
 # Импортируем:
@@ -18,6 +18,7 @@ import json
 import time
 import shutil
 import hashlib
+import threading
 import subprocess
 from functools import partial
 from threading import Thread, Lock
@@ -70,6 +71,14 @@ class Vars:
     real_compiled: int  = 0       # Сколько реально скомпилировано.
     to_compile:    int  = 0       # Сколько должно быть скомпилировано.
     compile_done:  bool = False   # Компиляция завершена.
+
+    autosave_stop  = threading.Event()  # Сигнал остановки автосохранения.
+    compile_failed = threading.Event()  # Были ли ошибки при компиляции.
+    compile_finished_lock    = Lock()   # Блокировка записи в словарь.
+    metadata:          dict  = {}       # Старые метаданные.
+    metadata_new:      dict  = {}       # Новые метаданные.
+    metadata_dirty:    bool  = False    # Есть несохранённые изменения метаданных.
+    n_sec_to_autosave: float = 1.0      # Автосохранение прогресса компиляции каждую секунду.
 
     analys_lock         = Lock()  # Блокировка счетчика.
     real_analysed: int  = 0       # Сколько реально анализировано.
@@ -149,10 +158,6 @@ def compile_log_thread() -> None:
     print("\r\033[2K", end="")  # Полностью очистить строку.
     if Vars.real_compiled == Vars.to_compile:
         print(f"\nCompilation finished: {time.time()-start_time:.2f}s")
-
-    # В случае если что-то пошло не так:
-    if compiled != Vars.to_compile:
-        print(f"[!] Something went wrong... (compiled {compiled} of {Vars.to_compile} targets).")
 
 
 # Вывести лог отладки сборки:
@@ -276,8 +281,9 @@ def find_files(path: str, form: str) -> list:
 
 # Генерируем уникальные имена объектных файлов с учётом пути:
 def generate_obj_filename(path: str) -> str:
-    norm = path.replace("/", "_").replace("\\", "_")
-    return os.path.join(Vars.build_dn, Vars.obj_dn, norm + ".o")
+    path_hash = hashlib.md5(path.encode("utf-8")).hexdigest()[:16]
+    name = os.path.splitext(os.path.basename(path))[0]
+    return os.path.join(Vars.build_dn, Vars.obj_dn, f"{name}-{path_hash}.o")
 
 
 # Получить метаинформацию:
@@ -313,10 +319,13 @@ def load_metadata(file_path: str) -> dict:
     return metadata
 
 
-# Сохраняем мета-данные:
-def save_metadata(file_path: str, data: dict) -> None:
-    with open(os.path.join(Vars.build_dn, file_path), "w+", encoding="utf-8") as f:
-        json.dump(data, f, indent=4)
+# Сохраняем мета-данные (атомарно: пишем во временный файл и подменяем им старый):
+def save_metadata(file_path: str, data: dict, indent: int | None = 4) -> None:
+    full_path = os.path.join(Vars.build_dn, file_path)
+    tmp_path = full_path + ".tmp"
+    with open(tmp_path, "w+", encoding="utf-8") as f:
+        json.dump(data, f, indent=indent)
+    os.replace(tmp_path, full_path)  # Прерывание сборки во время записи не повредит старый файл.
 
 
 # Получить новые метаданные:
@@ -429,26 +438,26 @@ def check_dirs() -> None:
 
 
 # Проверяем изменение конфига:
-def check_configs(metadata: dict, metadata_new: dict) -> None:
+def check_configs() -> None:
     # Если конфиги разные, надо сбросить сборку:
-    if ("config" not in metadata["metainfo"]) or ("config" not in metadata_new["metainfo"]) or \
-            (metadata["metainfo"]["config"] != metadata_new["metainfo"]["config"]):
+    if ("config" not in Vars.metadata["metainfo"]) or ("config" not in Vars.metadata_new["metainfo"]) or \
+            (Vars.metadata["metainfo"]["config"] != Vars.metadata_new["metainfo"]["config"]):
         Vars.build_cfg_edt = True
         Vars.reset_build = True
 
 
 # Обрабатываем файлы:
-def process_files(metadata: dict, metadata_new: dict) -> None:
+def process_files() -> None:
     # Получаем поле метаинформации и файлов из метаданных:
-    metainfo, files = metadata["metainfo"], metadata["files"]
-    metainfo_new, files_new = metadata_new["metainfo"], metadata_new["files"]
+    metainfo, files = Vars.metadata["metainfo"], Vars.metadata["files"]
+    metainfo_new, files_new = Vars.metadata_new["metainfo"], Vars.metadata_new["files"]
 
     # Получаем имена операционных систем на которых производились сборки:
     m_os = metainfo.get("os")
     m_os_new = metainfo_new.get("os")
 
     # Находим измененные, новые и удаленные файлы:
-    meta_changed, meta_added, meta_removed = [], [], []
+    meta_changed, meta_added = [], []
     for path, data_new in files_new.items():
         hash_new, headers_new = data_new["hash"], data_new["headers"]
         if path not in files:
@@ -467,8 +476,6 @@ def process_files(metadata: dict, metadata_new: dict) -> None:
 
         # Если файл изменился, добавляем его в список изменённых:
         if changed: meta_changed.append(path)
-    for path in files:
-        if path not in files_new: meta_removed.append(path)
     total_src = meta_added+meta_changed
 
     # Удаляем все объектные файлы, если прошлая сборка была сделана на другой системе:
@@ -481,13 +488,9 @@ def process_files(metadata: dict, metadata_new: dict) -> None:
 
     # Сбрасываем сборку путём удаления всех объектных файлов:
     if Vars.reset_build:
+        Vars.metadata["files"] = {}
         for file in os.listdir(obj_full_dn):
             if file.endswith(".o"): os.remove(os.path.join(obj_full_dn, file))
-
-    # Удаление объектных файлов по списку удалённых исходников:
-    for path in meta_removed:
-        obj_path = os.path.splitext(path)[0] + ".o"
-        if os.path.exists(obj_path): os.remove(obj_path)
 
     # Список всех актуальных .o файлов:
     obj_files = {  # [(Обработанное имя исходника в .o формате):(Полный путь к исходнику)].
@@ -538,6 +541,32 @@ def recreate_windows_icon() -> None:
         log_error(f"Recreate icon for windows: {error}")
 
 
+# Сбросить накопленные метаданные на диск (если есть изменения):
+def flush_metadata() -> None:
+    with Vars.compile_finished_lock:
+        if not Vars.metadata_dirty: return
+        data = json.dumps(Vars.metadata)
+        Vars.metadata_dirty = False
+    # Запись на диск уже без лока, чтобы не тормозить компиляцию:
+    full_path = os.path.join(Vars.build_dn, "tools/metadata.json")
+    with open(full_path + ".tmp", "w", encoding="utf-8") as f: f.write(data)
+    os.replace(full_path + ".tmp", full_path)
+
+
+# Поток автосохранения прогресса компиляции:
+def autosave_thread() -> None:
+    # wait() вернёт True сразу при выставлении события, иначе через N секунд вернёт False:
+    while not Vars.autosave_stop.wait(Vars.n_sec_to_autosave):
+        flush_metadata()
+
+
+# Сохранить скомпилированные файлы:
+def save_compiled_files(file_path: str) -> None:
+    Vars.metadata["metainfo"] = Vars.metadata_new["metainfo"]
+    Vars.metadata["files"][file_path] = Vars.metadata_new["files"][file_path]
+    Vars.metadata_dirty = True
+
+
 # Компилировать файл:
 def compile_file(file_path: str, compile_flags: list) -> None:
     try:
@@ -574,8 +603,12 @@ def compile_file(file_path: str, compile_flags: list) -> None:
         subprocess.run([a for a in args if a], text=True, check=True)
 
         with Vars.compile_lock: Vars.real_compiled += 1
-    except subprocess.CalledProcessError as error:
-        log_error(f"Compile returned status: {error.returncode}")
+        with Vars.compile_finished_lock: save_compiled_files(file_path)  # Сохраняем только успешно собранные файлы.
+    except subprocess.CalledProcessError:
+        Vars.compile_failed.set()  # Устанавливаем флаг о неудачном компилировании.
+    except Exception as error:
+        log(f"\nBuildSystem: [!] Error while compiling \"{file_path}\": {error}")
+        Vars.compile_failed.set()
 
 
 # Линковать объектные файлы в один исполняемый файл:
@@ -585,10 +618,15 @@ def link_files(linker_flags: list, linker_lib_flags: list) -> None:
         prog_full_path = os.path.join(Vars.build_dn, Vars.bin_dn, Vars.prog_name)
         obj_files = glob.glob(f"{obj_full_dn}/**/*.o", recursive=True)
 
+        # Записываем список объектных файлов в response-файл (обходим лимит длины командной строки):
+        rsp_path = os.path.join(obj_full_dn, "objects.txt")
+        with open(rsp_path, "w", encoding="utf-8") as f:
+            for obj in obj_files: f.write(f"\"{obj.replace(chr(92), '/')}\"\n")
+
         # Линкуем:
         start_time = time.time()
         log("Linking files... ", end="\r")
-        args = [Vars.linker] + linker_flags + obj_files + linker_lib_flags + ["-o", prog_full_path]
+        args = [Vars.linker] + linker_flags + [f"@{rsp_path}"] + linker_lib_flags + ["-o", prog_full_path]
         subprocess.run([a for a in args if a], check=True)
         log(f"\033[2KLinking finished: {time.time()-start_time:.2f}s")
     except subprocess.CalledProcessError as error:
@@ -616,7 +654,7 @@ def main() -> None:
     # Обработать аргументы:
     handle_args()
 
-    metadata = load_metadata("metadata.json")  # Читаем мета-данные.
+    Vars.metadata = load_metadata("metadata.json")  # Читаем мета-данные.
     Vars.cpu_threads = os.cpu_count()  # Узнаем количество ядер.
 
     os.chdir("../../")  # Переходим в корневую директорию из "<build-dir>/tools/".
@@ -654,16 +692,16 @@ def main() -> None:
         if Vars.m_threads: log(f"Using {Vars.cpu_threads} cpu threads.")
 
         # Получаем новый metadata (+ анализируем зависимости исходников):
-        metadata_new = get_new_metadata(all_files)
+        Vars.metadata_new = get_new_metadata(all_files)
 
         # Проверяем папки сборки:
         check_dirs()
 
         # Проверяем конфиги:
-        check_configs(metadata, metadata_new)
+        check_configs()
 
         # Обрабатываем файлы:
-        process_files(metadata, metadata_new)
+        process_files()
 
         # Вторая часть вывода информации:
         if Vars.build_clear: log(f"[!] Used clear flag for reset build.")
@@ -679,6 +717,8 @@ def main() -> None:
         recreate_windows_icon()
 
         # Компиляция исходников:
+        autosave = Thread(target=autosave_thread, daemon=True)
+        autosave.start()
         Vars.to_compile = len(Vars.total_src)
         log_compile_thread = Thread(target=compile_log_thread, daemon=True)
         log_compile_thread.start()
@@ -691,7 +731,14 @@ def main() -> None:
             for path in Vars.total_src:
                 compile_file(path, compile_flags)
         Vars.compile_done = True  # Все потоки компиляции завершены. Счетчик компиляции должен быть обновлен.
-        log_compile_thread.join()  # Ждём завершение вывода логов компиляции.
+        Vars.autosave_stop.set()  # Будим поток автосохранения, чтобы не ждать остаток секунды.
+        log_compile_thread.join()
+        autosave.join()
+        flush_metadata()  # Дописываем то, что накопилось за последнюю секунду.
+
+        # Проверяем компиляцию:
+        if Vars.compile_failed.is_set():
+            log_error(f"Uncompiled files: {Vars.to_compile - Vars.real_compiled}.")
 
         # Линкуем все объектные файлы в один исполняемый:
         link_files(linker_flags, linker_lib_flags)
@@ -701,7 +748,7 @@ def main() -> None:
         log(f"Build finished: {time.time()-start_time:.2f}s")
 
         # Сохраняем мета-данные в случае удачной сборки:
-        save_metadata("tools/metadata.json", metadata_new)
+        save_metadata("tools/metadata.json", Vars.metadata_new, indent=None)
 
         log(f"{'-'*80}")
 
