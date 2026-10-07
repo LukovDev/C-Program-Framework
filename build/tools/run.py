@@ -19,7 +19,7 @@ def log(msg: str, end: str = "\n") -> None:
 
 # Основная функция:
 def main() -> None:
-    config_file = f"{Vars.build_dn}/config.json"
+    config_file = "build/config.json"
     args, skip = [], False
     for arg in sys.argv[1:]:
         if skip: skip = False; continue

@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v4.1.0> ]
+# [ C-Program-Framework BuildSystem for PC <v4.2.0> ]
 #
 
-VERSION = "4.1.0"
+VERSION = "4.2.0"
 
 
 # Импортируем:
@@ -28,36 +28,37 @@ from concurrent.futures import ThreadPoolExecutor
 # Класс глобальных переменных:
 class Vars:
     # Конфигурация:
-    prog_name:   str  = "Undefined"
-    prog_icon:   str  = None      # None | str.
-    src_dp:      list = ["str/"]  # src dirs (paths).
-    build_dn:    str  = "build/"  # build dir name.
-    bin_dn:      str  = "bin"     # bin dir name.
-    obj_dn:      str  = "obj"     # obj dir name.
-    libs_dn:     str  = ""        # libs dir name (in bin dir).
-    build_lg:    bool = True      # Build logging.
-    m_threads:   bool = True      # Multi-thread building.
-    strip:       bool = False     # Strip.
-    prog_perc:   bool = True      # Show progress in percent.
-    con_dis:     bool = False     # Console disabled (for windows).
-    defines:     list = []        # Defines on compilation.
-    includes:    list = []        # Include dirs (paths).
-    libraries:   list = []        # Libraries dirs (paths).
-    libnames:    list = []        # Libraries names.
-    optimiz:     str  = "-O2"     # Code optimization level.
-    std_c:       str  = "c17"     # Std C version.
-    std_cpp:     str  = "c++17"   # Std C++ version.
-    comp_s:      str  = "gcc"     # Assembler.
-    comp_c:      str  = "gcc"     # C Compiler.
-    comp_cpp:    str  = "g++"     # C++ Compiler.
-    linker:      str  = "g++"     # Linker.
-    ld_file:     str  = None      # Linker script.
-    warnings:    list = []        # Warning flags.
-    comp_fg_s:   list = []        # Assembler flags (during compiling).
-    comp_fg_c:   list = []        # C flags (during compiling).
-    comp_fg_cpp: list = []        # C++ flags (during compiling).
-    link_fg:     list = []        # Linker flags (during linking).
-    cmd_aft_bld: list = []        # Commands to run after build.
+    prog_name:   str
+    prog_icon:   str   # None | str.
+    src_dp:      list  # src dirs (paths).
+    build_dn:    str   # build dir name.
+    bin_dn:      str   # bin dir name.
+    obj_dn:      str   # obj dir name.
+    libs_dn:     str   # libs dir name (in bin dir).
+    build_lg:    bool  # Build logging.
+    m_threads:   bool  # Multi-thread building.
+    strip:       bool  # Strip.
+    prog_perc:   bool  # Show progress in percent.
+    con_dis:     bool  # Console disabled (for windows).
+    defines:     list  # Defines on compilation.
+    includes:    list  # Include dirs (paths).
+    libraries:   list  # Libraries dirs (paths).
+    libnames:    list  # Libraries names.
+    embeds:      list  # Embed dirs (paths).
+    optimiz:     str   # Code optimization level.
+    std_c:       str   # Std C version.
+    std_cpp:     str   # Std C++ version.
+    comp_s:      str   # Assembler.
+    comp_c:      str   # C Compiler.
+    comp_cpp:    str   # C++ Compiler.
+    linker:      str   # Linker.
+    ld_file:     str   # Linker script.
+    warnings:    list  # Warning flags.
+    comp_fg_s:   list  # Assembler flags (during compiling).
+    comp_fg_c:   list  # C flags (during compiling).
+    comp_fg_cpp: list  # C++ flags (during compiling).
+    link_fg:     list  # Linker flags (during linking).
+    cmd_aft_bld: list  # Commands to run after build.
 
     # Прочее:
     config_file:   str  = "build/config.json"  # Путь до файла конфигурации (по умолчанию).
@@ -101,36 +102,37 @@ class Vars:
             Vars.config = json.load(f)
 
         # Заполняем поля данными:
-        Vars.prog_name   = Vars.config["program-name"]
-        Vars.prog_icon   = Vars.config["program-icon"]
-        Vars.src_dp      = Vars.config["source-dirs"]
-        Vars.build_dn    = Vars.config["build-dir"]
-        Vars.bin_dn      = Vars.config["bin-dir-name"]
-        Vars.obj_dn      = Vars.config["obj-dir-name"]
-        Vars.libs_dn     = Vars.config["libs-output"]
-        Vars.build_lg    = Vars.config["build-logging"]
-        Vars.m_threads   = Vars.config["multi-threads"]
-        Vars.strip       = Vars.config["strip"]
-        Vars.prog_perc   = Vars.config["progress-percent"]
-        Vars.con_dis     = Vars.config["console-disabled"]
-        Vars.defines     = Vars.config["defines"]
-        Vars.includes    = Vars.config["includes"]
-        Vars.libraries   = Vars.config["libraries"]
-        Vars.libnames    = Vars.config["libnames"]
-        Vars.optimiz     = Vars.config["optimization"]
-        Vars.std_c       = Vars.config["std-c"]
-        Vars.std_cpp     = Vars.config["std-cpp"]
-        Vars.comp_s      = Vars.config["compiler-s"]
-        Vars.comp_c      = Vars.config["compiler-c"]
-        Vars.comp_cpp    = Vars.config["compiler-cpp"]
-        Vars.linker      = Vars.config["linker"]
-        Vars.ld_file     = Vars.config["ld-file"]
-        Vars.warnings    = Vars.config["warnings"]
-        Vars.comp_fg_s   = Vars.config["compile-flags-s"]
-        Vars.comp_fg_c   = Vars.config["compile-flags-c"]
-        Vars.comp_fg_cpp = Vars.config["compile-flags-cpp"]
-        Vars.link_fg     = Vars.config["linker-flags"]
-        Vars.cmd_aft_bld = Vars.config["commands-after-build"]
+        Vars.prog_name   = Vars.config.get("program-name", "Undefined")
+        Vars.prog_icon   = Vars.config.get("program-icon", None)
+        Vars.src_dp      = Vars.config.get("source-dirs", ["src/"])
+        Vars.build_dn    = Vars.config.get("build-dir", "build/")
+        Vars.bin_dn      = Vars.config.get("bin-dir-name", "bin")
+        Vars.obj_dn      = Vars.config.get("obj-dir-name", "obj")
+        Vars.libs_dn     = Vars.config.get("libs-output", "")
+        Vars.build_lg    = Vars.config.get("build-logging", True)
+        Vars.m_threads   = Vars.config.get("multi-threads", True)
+        Vars.strip       = Vars.config.get("strip", False)
+        Vars.prog_perc   = Vars.config.get("progress-percent", True)
+        Vars.con_dis     = Vars.config.get("console-disabled", False)
+        Vars.defines     = Vars.config.get("defines", [])
+        Vars.includes    = Vars.config.get("includes", [])
+        Vars.libraries   = Vars.config.get("libraries", [])
+        Vars.libnames    = Vars.config.get("libnames", [])
+        Vars.embeds      = Vars.config.get("embeds", [])
+        Vars.optimiz     = Vars.config.get("optimization", "-O2")
+        Vars.std_c       = Vars.config.get("std-c", "c23")
+        Vars.std_cpp     = Vars.config.get("std-cpp", "c++23")
+        Vars.comp_s      = Vars.config.get("compiler-s", "gcc")
+        Vars.comp_c      = Vars.config.get("compiler-c", "gcc")
+        Vars.comp_cpp    = Vars.config.get("compiler-cpp", "g++")
+        Vars.linker      = Vars.config.get("linker", "g++")
+        Vars.ld_file     = Vars.config.get("ld-file", None)
+        Vars.warnings    = Vars.config.get("warnings", [])
+        Vars.comp_fg_s   = Vars.config.get("compile-flags-s", [])
+        Vars.comp_fg_c   = Vars.config.get("compile-flags-c", [])
+        Vars.comp_fg_cpp = Vars.config.get("compile-flags-cpp", [])
+        Vars.link_fg     = Vars.config.get("linker-flags", [])
+        Vars.cmd_aft_bld = Vars.config.get("commands-after-build", [])
 
 
 # Отдельный поток для вывода логов компиляции:
@@ -231,47 +233,50 @@ def get_header_hash(path: str) -> float:
     return Vars.header_hash_cache[path]
 
 
-# Рекурсивно собирает все заголовочные файлы, включая вложенные, из исходника:
-def collect_all_includes(path: str, inc_dirs: list[str] = None, _visited=None, _found=None) -> dict:
+# Рекурсивно собирает все зависимости исходника (#include и #embed), включая вложенные:
+def collect_all_includes(path: str, inc_dirs: list[str] = None, emb_dirs: list[str] = None,
+                         _visited=None, _found=None) -> dict:
     path = os.path.abspath(path.strip('"'))
 
     if inc_dirs is None: inc_dirs = []
+    if emb_dirs is None: emb_dirs = []
     if _visited is None: _visited = set()  # Нужен для предотвращения рекурсивных циклов.
-    if _found is None: _found = {}         # Для уникальности заголовков в результате.
+    if _found is None: _found = {}         # Для уникальности зависимостей в результате.
 
     # Если файл уже посещён или не существует - пропускаем:
     if path in _visited or not os.path.isfile(path): return _found
     _visited.add(path)  # Добавляем в посещенные.
 
-    src_dir = os.path.dirname(path)  # Директория текущего файла, нужна, чтобы искать локальные include.
+    src_dir = os.path.dirname(path)  # Директория текущего файла, нужна, чтобы искать локальные "файлы".
 
     try:
         # Чтение файла построчно:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
-                # Регулярка ищет конструкции вида #include "file.h" или #include <file.h>:
-                match = re.search(r'#include\s*[<"]([^">]+)[">]', line)
+                # Регулярка ищет #include/#embed вида "file" или <file>:
+                match = re.search(r'^\s*#\s*(include|embed)\s*([<"])([^">]+)[">]', line)
                 if not match: continue
 
+                directive = match.group(1)         # "include" или "embed".
+                is_local  = match.group(2) == '"'  # "file" ищется сначала рядом с текущим файлом, <file> - нет.
+                name      = match.group(3)         # Имя из директивы (например, "../core/mm.h" или <gbuffer.frag>).
+                dirs      = inc_dirs if directive == "include" else emb_dirs
+
                 # Формируем возможные пути для поиска файла:
-                inc_name = match.group(1)  # Имя из #include (например, "../core/mm.h").
-                candidate_paths = [
-                    os.path.abspath(os.path.join(src_dir, inc_name))
-                ] + [
-                    os.path.abspath(os.path.join(inc_dir, inc_name))
-                    for inc_dir in inc_dirs
-                ]
+                candidate_paths = [os.path.abspath(os.path.join(d, name)) for d in dirs]
+                if is_local: candidate_paths.insert(0, os.path.abspath(os.path.join(src_dir, name)))
 
                 # Проверяем каждый возможный путь:
-                for inc_path in candidate_paths:
-                    if os.path.isfile(inc_path):
-                        if inc_path in _found: break  # Уже есть в словаре.
-                        _found[inc_path] = get_header_hash(inc_path)
-                        # Рекурсивно собираем include этого заголовка:
-                        collect_all_includes(inc_path, inc_dirs, _visited, _found)
+                for dep_path in candidate_paths:
+                    if os.path.isfile(dep_path):
+                        if dep_path in _found: break  # Уже есть в словаре.
+                        _found[dep_path] = get_header_hash(dep_path)
+                        # Внутрь заходим только для #include. Встраиваемый файл - это данные, а не код:
+                        if directive == "include":
+                            collect_all_includes(dep_path, inc_dirs, emb_dirs, _visited, _found)
                         break
     except Exception: pass
-    return _found  # {путь_до_заголовка: его_хэш_сумма, ...}
+    return _found  # {путь_до_зависимости: её_хэш_сумма, ...}
 
 
 # Функция для поиска всех файлов определённого формата:
@@ -353,7 +358,7 @@ def get_new_metadata(all_files: list) -> dict:
 
     def find_deps(path: str) -> list:
         nonlocal new_all_files
-        new_all_files.append([path, collect_all_includes(path, inc_dirs=Vars.includes)])
+        new_all_files.append([path, collect_all_includes(path, inc_dirs=Vars.includes, emb_dirs=Vars.embeds)])
         with Vars.analys_lock: Vars.real_analysed += 1
 
     # Поиск зависимостей исходников:
@@ -693,12 +698,13 @@ def main() -> None:
     includes        = [f"-I{i}" for i in Vars.includes if i]
     libraries_flags = [f"-L{p}" for p in Vars.libraries if p]
     libnames_flags  = [f"-l{n}" for n in Vars.libnames if n]
+    embeds          = [f"--embed-dir={e}" for e in Vars.embeds if e]
     strip_flag      = ("-Wl,-x" if sys.platform == "darwin" else "-s") if Vars.strip else ""
     disconsole_flag = "-mwindows" if Vars.con_dis and sys.platform == "win32" else ""
     ld_file         = [f"-T{Vars.ld_file}" if Vars.ld_file else ""]
 
     # Флаги компиляции и линковки:
-    compile_flags    = [Vars.optimiz] + defines + includes + Vars.warnings
+    compile_flags    = [Vars.optimiz] + defines + includes + embeds + Vars.warnings
     linker_flags     = [Vars.optimiz] + [f for f in [strip_flag, disconsole_flag] if f] + ld_file + Vars.link_fg
     linker_lib_flags = libraries_flags + libnames_flags
     write_compile_commands(all_files, compile_flags)
