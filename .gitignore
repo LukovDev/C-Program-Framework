@@ -1,0 +1,5 @@
+build/bin/
+build/obj/
+build/tools/metadata.json
+build/tools/__pycache__/
+compile_commands.json

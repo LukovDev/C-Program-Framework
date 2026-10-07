@@ -1,0 +1,16 @@
+{
+    "configurations": [
+        {
+            "name": "C-Program-Framework",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/include"
+            ],
+            "defines": [],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        }
+    ],
+    "version": 4
+}

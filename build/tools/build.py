@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v4.0.0> ]
+# [ C-Program-Framework BuildSystem for PC <v4.1.0> ]
 #
 
-VERSION = "4.0.0"
+VERSION = "4.1.0"
 
 
 # Импортируем:
@@ -514,6 +514,27 @@ def process_files() -> None:
     Vars.total_src.sort(key=os.path.getsize, reverse=True)  # Сортируем файлы от больших к меньшим.
 
 
+# Записать compile_commands.json (точные команды компиляции для подсветки ошибок в редакторе):
+def write_compile_commands(all_files: list, compile_flags: list) -> None:
+    entries = []
+    for path in all_files:
+        path = path.strip('"')
+        ext = os.path.splitext(path)[1]
+        if ext == ".c":
+            comp, std, other = Vars.comp_c, f"-std={Vars.std_c}", Vars.comp_fg_c
+        elif ext == ".cpp":
+            comp, std, other = Vars.comp_cpp, f"-std={Vars.std_cpp}", Vars.comp_fg_cpp
+        else: continue  # Ассемблер редактору не нужен.
+        args = [comp, std] + compile_flags + other + ["-c", path, "-o", generate_obj_filename(path)]
+        entries.append({
+            "directory": os.getcwd(),  # Корень проекта. Пути в командах считаются от него.
+            "file": path,
+            "arguments": [a for a in args if a],
+        })
+    with open(os.path.join(Vars.build_dn, "compile_commands.json"), "w", encoding="utf-8") as f:
+        json.dump(entries, f, indent=4)
+
+
 # Пересоздать иконку для системы виндовс:
 def recreate_windows_icon() -> None:
     try:
@@ -680,6 +701,7 @@ def main() -> None:
     compile_flags    = [Vars.optimiz] + defines + includes + Vars.warnings
     linker_flags     = [Vars.optimiz] + [f for f in [strip_flag, disconsole_flag] if f] + ld_file + Vars.link_fg
     linker_lib_flags = libraries_flags + libnames_flags
+    write_compile_commands(all_files, compile_flags)
 
     # Собираем программу:
     try:
