@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v4.2.1> ]
+# [ C-Program-Framework BuildSystem for PC <v4.2.0> ]
 #
 
-VERSION = "4.2.1"
+VERSION = "4.2.0"
 
 
 # Импортируем:
@@ -700,14 +700,12 @@ def main() -> None:
     libnames_flags  = [f"-l{n}" for n in Vars.libnames if n]
     embeds          = [f"--embed-dir={e}" for e in Vars.embeds if e]
     strip_flag      = ("-Wl,-x" if sys.platform == "darwin" else "-s") if Vars.strip else ""
-    nocon_flag      = "-mwindows" if Vars.con_dis and sys.platform == "win32" else ""
-    # Обход бага MinGW-GCC: стек на Windows выровнен на 16, а AVX-команды требуют 32 (GCC PR 54412):
-    avx_flag        = "-Wa,-muse-unaligned-vector-move" if sys.platform == "win32" else ""
+    disconsole_flag = "-mwindows" if Vars.con_dis and sys.platform == "win32" else ""
     ld_file         = [f"-T{Vars.ld_file}" if Vars.ld_file else ""]
 
     # Флаги компиляции и линковки:
     compile_flags    = [Vars.optimiz] + defines + includes + embeds + Vars.warnings
-    linker_flags     = [Vars.optimiz] + [f for f in [strip_flag, nocon_flag, avx_flag] if f] + ld_file + Vars.link_fg
+    linker_flags     = [Vars.optimiz] + [f for f in [strip_flag, disconsole_flag] if f] + ld_file + Vars.link_fg
     linker_lib_flags = libraries_flags + libnames_flags
     write_compile_commands(all_files, compile_flags)
 
