@@ -3,10 +3,10 @@
 #
 # Этот скрипт должен быть запущен в каталоге "<build-dir>/tools/"
 #
-# [ C-Program-Framework BuildSystem for PC <v4.2.0> ]
+# [ C-Program-Framework BuildSystem for PC <v4.2.1> ]
 #
 
-VERSION = "4.2.0"
+VERSION = "4.2.1"
 
 
 # Импортируем:
@@ -89,6 +89,8 @@ class Vars:
     header_hash_cache: dict = {}  # Глобальный кэш хэшей заголовочных файлов.
 
     # Причины сброса сборки:
+    build_cfgfail_except: str    # Причина ошибки.
+    build_cfgfail: bool = False  # Ошибка конфигурации.
     build_clear:   bool = False  # Очистка сборки.
     build_no_meta: bool = False  # Отсутствует мета-файл.
     build_cfg_edt: bool = False  # Файл конфигурации редактирован.
@@ -98,8 +100,15 @@ class Vars:
     # Инициализировать переменные:
     @staticmethod
     def init_vars(config_path: str) -> None:
-        with open(config_path, "r+", encoding="utf-8") as f:
-            Vars.config = json.load(f)
+        try:
+            with open(config_path, "r+", encoding="utf-8") as f:
+                Vars.config = json.load(f)
+        except json.decoder.JSONDecodeError:
+            Vars.build_cfgfail_except = "Config file is broken!"
+            Vars.build_cfgfail = True
+        except Exception as error:
+            Vars.build_cfgfail_except = f"Failed loading config file: {error}"
+            Vars.build_cfgfail = True
 
         # Заполняем поля данными:
         Vars.prog_name   = Vars.config.get("program-name", "Undefined")
@@ -169,10 +178,10 @@ def log(msg: str, end: str = "\n") -> None:
 
 
 # Вывести лог отладки ошибки:
-def log_error(msg: str) -> None:
+def log_error(msg: str, separator: bool = True) -> None:
     # if not Vars.build_lg: return
     print(f"BuildSystem: [!] Error: {msg}")
-    log(f"{'-'*80}")
+    if separator: log(f"{'-'*80}")
     os._exit(1)  # Жёстко останавливаем сборку.
 
 
@@ -685,6 +694,9 @@ def main() -> None:
 
     os.chdir("../../")  # Переходим в корневую директорию из "<build-dir>/tools/".
     Vars.init_vars(Vars.config_file)  # Инициализируем переменные.
+
+    # Проверяем на ошибку конфиг файла:
+    if Vars.build_cfgfail: log_error(Vars.build_cfgfail_except, False)
 
     # Поиск всех целевых файлов:
     found_files = find_all_target_files()

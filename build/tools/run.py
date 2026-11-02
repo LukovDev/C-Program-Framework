@@ -32,6 +32,9 @@ def main() -> None:
     os.chdir("../../")
     Vars.init_vars(config_file)
 
+    # Проверяем на ошибку конфиг файла:
+    if Vars.build_cfgfail: exit()
+
     # Преобразование данных конфигурации в переменные:
     prog_name   = Vars.prog_name
     build_dir   = Vars.build_dn
